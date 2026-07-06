@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mino Pets - Live Aquarium Plants & Fishes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="products.js" defer></script>
+</head>
+<body class="bg-gray-100 font-sans min-h-screen pb-24">
+
+    <header class="bg-teal-600 text-white p-4 sticky top-0 shadow-md z-10 flex justify-between items-center">
+        <h1 class="text-xl font-bold">🐟 Mino Pets</h1>
+        <button onclick="toggleCart()" class="bg-teal-700 hover:bg-teal-800 px-4 py-2 rounded-lg font-semibold relative">
+            🛒 View Cart 
+            <span id="cart-badge" class="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center hidden">0</span>
+        </button>
+    </header>
+
+    <main class="max-w-6xl mx-auto p-4 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <div class="lg:col-span-2 space-y-4">
+            <h2 class="text-xl font-semibold text-gray-800 mb-2">Available Fishes & Plants</h2>
+            <div id="product-list" class="space-y-3">
+                </div>
+        </div>
+
+        <div id="cart-panel" class="bg-white p-6 rounded-xl shadow-lg border border-gray-200 h-fit sticky top-20 hidden lg:block">
+            <h2 class="text-xl font-bold text-gray-800 mb-4 pb-2 border-b">Your Order Summary</h2>
+            
+            <div id="cart-items" class="space-y-3 max-h-60 overflow-y-auto mb-4">
+                <p class="text-gray-500 italic">Your cart is empty.</p>
+            </div>
+
+            <div class="flex justify-between font-bold text-lg text-gray-800 mb-6 pt-2 border-t">
+                <span>Total:</span>
+                <span><span id="cart-total">0</span>/-</span>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Fulfillment Method:</label>
+                    <select id="fulfillment" class="w-full border p-2 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none">
+                        <option value="Store Pickup">Local Store Pickup</option>
+                        <option value="Local Delivery">Local Delivery (Check availability first)</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Your Phone Number:</label>
+                    <input type="tel" id="customer-phone" placeholder="e.g. 9876543210" class="w-full border p-2 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none">
+                </div>
+
+                <button onclick="sendWhatsAppOrder()" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg shadow transition duration-200 flex items-center justify-center space-x-2">
+                    <span>Send Order via WhatsApp</span>
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <div id="mobile-cart-bar" class="lg:hidden fixed bottom-0 left-0 right-0 bg-teal-600 text-white p-4 flex justify-between items-center shadow-2xl hidden">
+        <div><span id="mobile-cart-count">0</span> items selected</div>
+        <button onclick="toggleCart()" class="bg-white text-teal-700 font-bold px-4 py-2 rounded-lg text-sm">Review & Order</button>
+    </div>
+
+    <script>
+        // YOUR WHATSAPP BUSINESS PHONE NUMBER (With country code, no +)
+        const MY_WHATSAPP_NUMBER = "919876543210"; 
+
+        let cart = {};
+
+        // Wait for products.js to load, then display
+        window.addEventListener('DOMContentLoaded', () => {
+            if (typeof products !== 'undefined') {
+                displayProducts();
+            }
+        });
+
+        function displayProducts() {
+            const container = document.getElementById('product-list');
+            container.innerHTML = products.map(product => {
+                const controls = product.inStock 
+                    ? `<button onclick="updateQty(${product.id}, -1)" class="w-8 h-8 bg-white rounded-md shadow-sm font-bold text-gray-600 hover:bg-gray-200">-</button>
+                       <span id="qty-${product.id}" class="w-8 text-center font-bold text-gray-800">0</span>
+                       <button onclick="updateQty(${product.id}, 1)" class="w-8 h-8 bg-white rounded-md shadow-sm font-bold text-gray-600 hover:bg-gray-200">+</button>`
+                    : `<span class="text-red-500 font-bold px-2 py-1 bg-red-50 rounded-md text-sm">Out of Stock</span>`;
+
+                return `
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 ${!product.inStock ? 'opacity-60' : ''}">
+                        <div class="flex items-center space-x-4">
+                            <img src="${product.image}" alt="${product.name}" class="w-16 h-16 object-cover rounded-lg border border-gray-100 flex-shrink-0" onerror="this.src='https://placehold.co/100?text=No+Image'">
+                            <div>
+                                <h3 class="font-bold text-gray-800 text-lg">${product.name}</h3>
+                                <p class="text-sm text-gray-500">${product.description}</p>
+                                <p class="text-teal-600 font-semibold mt-1">Price: ${product.price}/-</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center bg-gray-100 p-1 rounded-lg self-end sm:self-auto">${controls}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateQty(productId, change) {
+            if (!cart[productId]) cart[productId] = 0;
+            cart[productId] += change;
+            if (cart[productId] <= 0) {
+                delete cart[productId];
+                document.getElementById(`qty-${productId}`).innerText = 0;
+            } else {
+                document.getElementById(`qty-${productId}`).innerText = cart[productId];
+            }
+            updateCartUI();
+        }
+
+        function updateCartUI() {
+            const cartItemsContainer = document.getElementById('cart-items');
+            let total = 0, totalItems = 0, itemsHtml = '';
+
+            for (let id in cart) {
+                const item = products.find(p => p.id == id);
+                const quantity = cart[id];
+                const cost = item.price * quantity;
+                total += cost;
+                totalItems += quantity;
+
+                itemsHtml += `
+                    <div class="flex justify-between items-center text-sm border-b pb-2">
+                        <div>
+                            <span class="font-semibold text-gray-800">${item.name}</span>
+                            <span class="text-gray-500 text-xs block">Qty: ${quantity} x ${item.price}/-</span>
+                        </div>
+                        <span class="font-medium text-gray-700">${cost}/-</span>
+                    </div>
+                `;
+            }
+
+            cartItemsContainer.innerHTML = itemsHtml || '<p class="text-gray-500 italic">Your cart is empty.</p>';
+            document.getElementById('cart-total').innerText = total;
+            
+            const badge = document.getElementById('cart-badge');
+            const mobileBar = document.getElementById('mobile-cart-bar');
+            document.getElementById('mobile-cart-count').innerText = totalItems;
+            
+            if (totalItems > 0) {
+                badge.innerText = totalItems; badge.classList.remove('hidden'); mobileBar.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden'); mobileBar.classList.add('hidden');
+            }
+        }
+
+        function toggleCart() {
+            const panel = document.getElementById('cart-panel');
+            panel.classList.toggle('hidden');
+            if(!panel.classList.contains('hidden')) panel.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function sendWhatsAppOrder() {
+            const phoneInput = document.getElementById('customer-phone').value.trim();
+            const fulfillment = document.getElementById('fulfillment').value;
+            
+            if (Object.keys(cart).length === 0) { alert("Please add items to your cart first!"); return; }
+            if (!phoneInput) { alert("Please provide your phone number."); return; }
+
+            let orderText = `*New Order Request - Mino Pets*\n`;
+            orderText += `----------------------------------\n`;
+            let total = 0;
+            for (let id in cart) {
+                const item = products.find(p => p.id == id);
+                const quantity = cart[id];
+                const cost = item.price * quantity;
+                total += cost;
+                orderText += `▪️ ${quantity}x ${item.name} (${cost}/-)\n`;
+            }
+            orderText += `----------------------------------\n`;
+            orderText += `*Total:* ${total}/-\n`;
+            orderText += `*Method:* ${fulfillment}\n`;
+            orderText += `*Customer Contact:* ${phoneInput}\n\n`;
+            orderText += `Please confirm stock availability and pickup timeline!`;
+
+            window.open(`https://wa.me/${MY_WHATSAPP_NUMBER}?text=${encodeURIComponent(orderText)}`, '_blank');
+        }
+    </script>
+</body>
+</html>
