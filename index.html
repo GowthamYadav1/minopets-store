@@ -7,58 +7,63 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="products.js" defer></script>
 </head>
-<body class="bg-gray-100 font-sans min-h-screen pb-24">
+<body class="bg-gray-100 font-sans min-h-screen pb-24 overflow-x-hidden">
 
     <header class="bg-teal-600 text-white p-4 sticky top-0 shadow-md z-10 flex justify-between items-center">
         <h1 class="text-xl font-bold">🐟 Mino Pets</h1>
-        <button onclick="toggleCart()" class="bg-teal-700 hover:bg-teal-800 px-4 py-2 rounded-lg font-semibold relative">
+        <button onclick="toggleCart()" class="bg-teal-700 hover:bg-teal-800 px-4 py-2 rounded-lg font-semibold relative z-20">
             🛒 View Cart 
             <span id="cart-badge" class="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center hidden">0</span>
         </button>
     </header>
 
-    <main class="max-w-6xl mx-auto p-4 grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        <div class="lg:col-span-2 space-y-4">
+    <main class="max-w-4xl mx-auto p-4">
+        <div class="space-y-4">
             <h2 class="text-xl font-semibold text-gray-800 mb-2">Available Fishes & Plants</h2>
             <div id="product-list" class="space-y-3">
                 </div>
         </div>
-
-        <div id="cart-panel" class="bg-white p-6 rounded-xl shadow-lg border border-gray-200 h-fit sticky top-20 hidden lg:block">
-            <h2 class="text-xl font-bold text-gray-800 mb-4 pb-2 border-b">Your Order Summary</h2>
-            
-            <div id="cart-items" class="space-y-3 max-h-60 overflow-y-auto mb-4">
-                <p class="text-gray-500 italic">Your cart is empty.</p>
-            </div>
-
-            <div class="flex justify-between font-bold text-lg text-gray-800 mb-6 pt-2 border-t">
-                <span>Total:</span>
-                <span><span id="cart-total">0</span>/-</span>
-            </div>
-
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Fulfillment Method:</label>
-                    <select id="fulfillment" class="w-full border p-2 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none">
-                        <option value="Store Pickup">Local Store Pickup</option>
-                        <option value="Local Delivery">Local Delivery (Check availability first)</option>
-                    </select>
-                </div>
-                
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Your Phone Number:</label>
-                    <input type="tel" id="customer-phone" placeholder="e.g. 9876543210" class="w-full border p-2 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none">
-                </div>
-
-                <button onclick="sendWhatsAppOrder()" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg shadow transition duration-200 flex items-center justify-center space-x-2">
-                    <span>Send Order via WhatsApp</span>
-                </button>
-            </div>
-        </div>
     </main>
 
-    <div id="mobile-cart-bar" class="lg:hidden fixed bottom-0 left-0 right-0 bg-teal-600 text-white p-4 flex justify-between items-center shadow-2xl hidden">
+    <div id="cart-overlay" onclick="toggleCart()" class="fixed inset-0 bg-black/50 z-20 hidden transition-opacity"></div>
+
+    <div id="cart-panel" class="fixed top-0 right-0 h-full w-full sm:w-[450px] bg-white p-6 shadow-2xl z-30 transform translate-x-full transition-transform duration-300 ease-in-out hidden flex flex-col">
+        
+        <div class="flex justify-between items-center pb-4 border-b mb-4">
+            <h2 class="text-xl font-bold text-gray-800">Your Order Summary</h2>
+            <button onclick="toggleCart()" class="text-gray-500 hover:text-gray-800 text-2xl font-bold p-1">&times;</button>
+        </div>
+        
+        <div id="cart-items" class="space-y-3 overflow-y-auto flex-1 pr-1 mb-4">
+            <p class="text-gray-500 italic">Your cart is empty.</p>
+        </div>
+
+        <div class="flex justify-between font-bold text-lg text-gray-800 mb-6 pt-4 border-t">
+            <span>Total:</span>
+            <span><span id="cart-total">0</span>/-</span>
+        </div>
+
+        <div class="space-y-4 pt-2 border-t">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Fulfillment Method:</label>
+                <select id="fulfillment" class="w-full border p-2 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none">
+                    <option value="Store Pickup">Local Store Pickup</option>
+                    <option value="Local Delivery">Local Delivery (Check availability first)</option>
+                </select>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Your Phone Number:</label>
+                <input type="tel" id="customer-phone" placeholder="e.g. 9876543210" class="w-full border p-2 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none">
+            </div>
+
+            <button onclick="sendWhatsAppOrder()" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg shadow transition duration-200 flex items-center justify-center space-x-2">
+                <span>Send Order via WhatsApp</span>
+            </button>
+        </div>
+    </div>
+
+    <div id="mobile-cart-bar" class="fixed bottom-0 left-0 right-0 bg-teal-600 text-white p-4 flex justify-between items-center shadow-2xl hidden z-10">
         <div><span id="mobile-cart-count">0</span> items selected</div>
         <button onclick="toggleCart()" class="bg-white text-teal-700 font-bold px-4 py-2 rounded-lg text-sm">Review & Order</button>
     </div>
@@ -69,7 +74,6 @@
 
         let cart = {};
 
-        // Wait for products.js to load, then display
         window.addEventListener('DOMContentLoaded', () => {
             if (typeof products !== 'undefined') {
                 displayProducts();
@@ -143,16 +147,34 @@
             document.getElementById('mobile-cart-count').innerText = totalItems;
             
             if (totalItems > 0) {
-                badge.innerText = totalItems; badge.classList.remove('hidden'); mobileBar.classList.remove('hidden');
+                badge.innerText = totalItems; 
+                badge.classList.remove('hidden'); 
+                mobileBar.classList.remove('hidden');
             } else {
-                badge.classList.add('hidden'); mobileBar.classList.add('hidden');
+                badge.classList.add('hidden'); 
+                mobileBar.classList.add('hidden');
             }
         }
 
         function toggleCart() {
             const panel = document.getElementById('cart-panel');
-            panel.classList.toggle('hidden');
-            if(!panel.classList.contains('hidden')) panel.scrollIntoView({ behavior: 'smooth' });
+            const overlay = document.getElementById('cart-overlay');
+            
+            if (panel.classList.contains('hidden')) {
+                // Show panel drawer explicitly
+                panel.classList.remove('hidden');
+                overlay.classList.remove('hidden');
+                setTimeout(() => {
+                    panel.classList.remove('translate-x-full');
+                }, 10);
+            } else {
+                // Smooth hide slide animation execution
+                panel.classList.add('translate-x-full');
+                overlay.classList.add('hidden');
+                setTimeout(() => {
+                    panel.classList.add('hidden');
+                }, 300);
+            }
         }
 
         function sendWhatsAppOrder() {
