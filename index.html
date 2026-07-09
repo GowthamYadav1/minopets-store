@@ -3,205 +3,161 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mino Pets - Live Aquarium Plants & Fishes</title>
+    <title>Mino Pets — Coming Soon</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="products.js" defer></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            blue: '#004B93',
+                            'blue-dark': '#003A75',
+                            coral: '#FF4500',
+                            'coral-dark': '#E03D00',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-18px) rotate(3deg); }
+        }
+        @keyframes swim {
+            0% { transform: translateX(-120%) scaleX(1); }
+            49% { transform: translateX(calc(100vw + 120%)) scaleX(1); }
+            50% { transform: translateX(calc(100vw + 120%)) scaleX(-1); }
+            100% { transform: translateX(-120%) scaleX(-1); }
+        }
+        @keyframes bubble-rise {
+            0% { transform: translateY(0) scale(1); opacity: 0.6; }
+            100% { transform: translateY(-100vh) scale(1.4); opacity: 0; }
+        }
+        @keyframes wave {
+            0%, 100% { d: path("M0,40 Q150,80 300,40 T600,40 T900,40 T1200,40 V120 H0 Z"); }
+            50% { d: path("M0,50 Q150,10 300,50 T600,50 T900,50 T1200,50 V120 H0 Z"); }
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        .fish-float { animation: float 4s ease-in-out infinite; }
+        .fish-swim { animation: swim 22s linear infinite; }
+        .bubble { animation: bubble-rise linear infinite; }
+        .cursor-blink { animation: blink 1s step-end infinite; }
+        .wave-path { animation: wave 6s ease-in-out infinite; }
+    </style>
 </head>
-<body class="bg-gray-100 font-sans min-h-screen pb-24 overflow-x-hidden">
+<body class="bg-[#F8FAFC] font-sans min-h-screen overflow-hidden antialiased relative">
 
-    <header class="bg-teal-600 text-white p-4 sticky top-0 shadow-md z-10 flex justify-between items-center">
-        <h1 class="text-xl font-bold">🐟 Mino Pets</h1>
-        <button onclick="toggleCart()" class="bg-teal-700 hover:bg-teal-800 px-4 py-2 rounded-lg font-semibold relative z-20">
-            🛒 View Cart 
-            <span id="cart-badge" class="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center hidden">0</span>
-        </button>
-    </header>
+    <!-- Rising bubbles -->
+    <div class="fixed inset-0 pointer-events-none z-0 overflow-hidden" id="bubbles"></div>
 
-    <main class="max-w-4xl mx-auto p-4">
-        <div class="space-y-4">
-            <h2 class="text-xl font-semibold text-gray-800 mb-2">Available Fishes & Plants</h2>
-            <div id="product-list" class="space-y-3">
-                </div>
+    <!-- Swimming fish -->
+    <div class="fixed top-1/4 fish-swim text-4xl z-0 pointer-events-none opacity-30" aria-hidden="true">🐠</div>
+    <div class="fixed top-2/3 fish-swim text-2xl z-0 pointer-events-none opacity-20" style="animation-delay: -8s; animation-duration: 28s;" aria-hidden="true">🐟</div>
+
+    <main class="relative z-10 min-h-screen flex flex-col items-center justify-center px-6 text-center">
+
+        <div class="fish-float">
+            <img src="/assets/logo.png" alt="Mino Pets" class="h-16 sm:h-20 w-auto mx-auto"
+                onerror="this.style.display='none'; this.nextElementSibling.style.display='block'">
+            <span class="hidden text-brand-blue font-extrabold text-4xl tracking-tight">MINO</span>
         </div>
+
+        <div class="inline-flex items-center gap-2 bg-brand-coral/10 text-brand-coral border border-brand-coral/20 rounded-full px-4 py-1.5 text-sm font-semibold mb-6">
+            <span class="relative flex h-2 w-2">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-coral opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-brand-coral"></span>
+            </span>
+            Under Development
+        </div>
+
+        <h1 class="text-3xl sm:text-5xl font-extrabold text-brand-blue leading-tight max-w-2xl">
+            Something fishy is brewing…
+        </h1>
+
+        <p class="text-gray-500 mt-4 text-base sm:text-lg max-w-md leading-relaxed">
+            We're building a premium aquarium store for ornamental fishes, live plants, shrimps &amp; aquascape gear. The tank is almost ready!
+        </p>
+
+        <!-- Fun status messages -->
+        <div class="mt-8 bg-white rounded-2xl shadow-sm border-2 border-brand-blue/10 px-6 py-5 max-w-sm w-full">
+            <p class="text-xs font-semibold text-brand-blue/50 uppercase tracking-widest mb-3">Tank Status</p>
+            <ul class="text-left space-y-2.5 text-sm text-gray-600" id="status-list">
+                <li class="flex items-center gap-2"><span class="text-brand-coral">●</span> Oxygenating the codebase…</li>
+                <li class="flex items-center gap-2"><span class="text-brand-blue">●</span> Stocking live plants &amp; tetras…</li>
+                <li class="flex items-center gap-2"><span class="text-gray-300">○</span> Polishing the coral buttons…</li>
+                <li class="flex items-center gap-2"><span class="text-gray-300">○</span> Testing the WhatsApp checkout…</li>
+            </ul>
+            <div class="mt-4 h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div class="h-full bg-gradient-to-r from-brand-blue to-brand-coral rounded-full transition-all duration-1000" id="progress-bar" style="width: 62%"></div>
+            </div>
+            <p class="text-xs text-gray-400 mt-2 text-right"><span id="progress-text">62</span>% complete<span class="cursor-blink">|</span></p>
+        </div>
+
+        <p class="mt-10 text-sm text-gray-400">
+            Got questions? Reach us on WhatsApp — we'll reply faster than a guppy swims.
+        </p>
+
+        <a href="https://wa.me/919035559089" target="_blank" rel="noopener"
+            class="mt-4 inline-flex items-center gap-2 bg-brand-blue hover:bg-brand-blue-dark text-white font-semibold px-6 py-3 rounded-full transition-all duration-200 hover:shadow-lg active:scale-95">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+            Say Hello
+        </a>
+
+        <a href="/dev" class="mt-16 text-xs text-gray-300 hover:text-brand-blue transition-colors">Preview store →</a>
     </main>
 
-    <div id="cart-overlay" onclick="toggleCart()" class="fixed inset-0 bg-black/50 z-20 hidden transition-opacity"></div>
-
-    <div id="cart-panel" class="fixed top-0 right-0 h-full w-full sm:w-[450px] bg-white p-6 shadow-2xl z-30 transform translate-x-full transition-transform duration-300 ease-in-out hidden flex flex-col">
-        
-        <div class="flex justify-between items-center pb-4 border-b mb-4">
-            <h2 class="text-xl font-bold text-gray-800">Your Order Summary</h2>
-            <button onclick="toggleCart()" class="text-gray-500 hover:text-gray-800 text-2xl font-bold p-1">&times;</button>
-        </div>
-        
-        <div id="cart-items" class="space-y-3 overflow-y-auto flex-1 pr-1 mb-4">
-            <p class="text-gray-500 italic">Your cart is empty.</p>
-        </div>
-
-        <div class="flex justify-between font-bold text-lg text-gray-800 mb-6 pt-4 border-t">
-            <span>Total:</span>
-            <span><span id="cart-total">0</span>/-</span>
-        </div>
-
-        <div class="space-y-4 pt-2 border-t">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Fulfillment Method:</label>
-                <select id="fulfillment" class="w-full border p-2 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none">
-                    <option value="Store Pickup">Local Store Pickup</option>
-                    <option value="Local Delivery">Local Delivery (Check availability first)</option>
-                </select>
-            </div>
-            
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Your Phone Number:</label>
-                <input type="tel" id="customer-phone" placeholder="e.g. 9876543210" class="w-full border p-2 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none">
-            </div>
-
-            <button onclick="sendWhatsAppOrder()" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg shadow transition duration-200 flex items-center justify-center space-x-2">
-                <span>Send Order via WhatsApp</span>
-            </button>
-        </div>
-    </div>
-
-    <div id="mobile-cart-bar" class="fixed bottom-0 left-0 right-0 bg-teal-600 text-white p-4 flex justify-between items-center shadow-2xl hidden z-10">
-        <div><span id="mobile-cart-count">0</span> items selected</div>
-        <button onclick="toggleCart()" class="bg-white text-teal-700 font-bold px-4 py-2 rounded-lg text-sm">Review & Order</button>
+    <!-- Bottom wave -->
+    <div class="fixed bottom-0 left-0 right-0 z-0 pointer-events-none">
+        <svg viewBox="0 0 1200 120" preserveAspectRatio="none" class="w-full h-24 sm:h-32">
+            <path class="wave-path fill-brand-blue/10" d="M0,40 Q150,80 300,40 T600,40 T900,40 T1200,40 V120 H0 Z"/>
+            <path class="fill-brand-blue/20" d="M0,60 Q150,20 300,60 T600,60 T900,60 T1200,60 V120 H0 Z"/>
+        </svg>
     </div>
 
     <script>
-        // YOUR WHATSAPP BUSINESS PHONE NUMBER (With country code, no +)
-        const MY_WHATSAPP_NUMBER = "919035559089"; 
+        const bubbleContainer = document.getElementById('bubbles');
+        for (let i = 0; i < 18; i++) {
+            const b = document.createElement('div');
+            const size = Math.random() * 12 + 6;
+            b.className = 'bubble absolute rounded-full bg-brand-blue/10 border border-brand-blue/20';
+            b.style.cssText = `width:${size}px;height:${size}px;left:${Math.random()*100}%;bottom:-20px;animation-duration:${6+Math.random()*8}s;animation-delay:${Math.random()*6}s`;
+            bubbleContainer.appendChild(b);
+        }
 
-        let cart = {};
+        const statuses = [
+            ['Oxygenating the codebase…', 'done'],
+            ['Stocking live plants & tetras…', 'done'],
+            ['Polishing the coral buttons…', 'active'],
+            ['Testing the WhatsApp checkout…', 'pending'],
+        ];
+        const progressSteps = [62, 74, 86, 94];
+        let step = 0;
 
-        window.addEventListener('DOMContentLoaded', () => {
-            if (typeof products !== 'undefined') {
-                displayProducts();
-            }
-        });
+        setInterval(() => {
+            step = (step + 1) % progressSteps.length;
+            const pct = progressSteps[step];
+            document.getElementById('progress-bar').style.width = pct + '%';
+            document.getElementById('progress-text').innerText = pct;
 
-        function displayProducts() {
-            const container = document.getElementById('product-list');
-            container.innerHTML = products.map(product => {
-                const controls = product.inStock 
-                    ? `<button onclick="updateQty(${product.id}, -1)" class="w-8 h-8 bg-white rounded-md shadow-sm font-bold text-gray-600 hover:bg-gray-200">-</button>
-                       <span id="qty-${product.id}" class="w-8 text-center font-bold text-gray-800">0</span>
-                       <button onclick="updateQty(${product.id}, 1)" class="w-8 h-8 bg-white rounded-md shadow-sm font-bold text-gray-600 hover:bg-gray-200">+</button>`
-                    : `<span class="text-red-500 font-bold px-2 py-1 bg-red-50 rounded-md text-sm">Out of Stock</span>`;
-
-                return `
-                    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 ${!product.inStock ? 'opacity-60' : ''}">
-                        <div class="flex items-center space-x-4">
-                            <img src="${product.image}" alt="${product.name}" class="w-16 h-16 object-cover rounded-lg border border-gray-100 flex-shrink-0" onerror="this.src='https://placehold.co/100?text=No+Image'">
-                            <div>
-                                <h3 class="font-bold text-gray-800 text-lg">${product.name}</h3>
-                                <p class="text-sm text-gray-500">${product.description}</p>
-                                <p class="text-teal-600 font-semibold mt-1">Price: ${product.price}/-</p>
-                            </div>
-                        </div>
-                        <div class="flex items-center bg-gray-100 p-1 rounded-lg self-end sm:self-auto">${controls}</div>
-                    </div>
-                `;
+            const list = document.getElementById('status-list');
+            list.innerHTML = statuses.map(([text, state], i) => {
+                const dot = i < step ? 'text-brand-blue' : i === step ? 'text-brand-coral animate-pulse' : 'text-gray-300';
+                const icon = i < step ? '✓' : '●';
+                return `<li class="flex items-center gap-2"><span class="${dot}">${icon}</span>${text}</li>`;
             }).join('');
-        }
-
-        function updateQty(productId, change) {
-            if (!cart[productId]) cart[productId] = 0;
-            cart[productId] += change;
-            if (cart[productId] <= 0) {
-                delete cart[productId];
-                document.getElementById(`qty-${productId}`).innerText = 0;
-            } else {
-                document.getElementById(`qty-${productId}`).innerText = cart[productId];
-            }
-            updateCartUI();
-        }
-
-        function updateCartUI() {
-            const cartItemsContainer = document.getElementById('cart-items');
-            let total = 0, totalItems = 0, itemsHtml = '';
-
-            for (let id in cart) {
-                const item = products.find(p => p.id == id);
-                const quantity = cart[id];
-                const cost = item.price * quantity;
-                total += cost;
-                totalItems += quantity;
-
-                itemsHtml += `
-                    <div class="flex justify-between items-center text-sm border-b pb-2">
-                        <div>
-                            <span class="font-semibold text-gray-800">${item.name}</span>
-                            <span class="text-gray-500 text-xs block">Qty: ${quantity} x ${item.price}/-</span>
-                        </div>
-                        <span class="font-medium text-gray-700">${cost}/-</span>
-                    </div>
-                `;
-            }
-
-            cartItemsContainer.innerHTML = itemsHtml || '<p class="text-gray-500 italic">Your cart is empty.</p>';
-            document.getElementById('cart-total').innerText = total;
-            
-            const badge = document.getElementById('cart-badge');
-            const mobileBar = document.getElementById('mobile-cart-bar');
-            document.getElementById('mobile-cart-count').innerText = totalItems;
-            
-            if (totalItems > 0) {
-                badge.innerText = totalItems; 
-                badge.classList.remove('hidden'); 
-                mobileBar.classList.remove('hidden');
-            } else {
-                badge.classList.add('hidden'); 
-                mobileBar.classList.add('hidden');
-            }
-        }
-
-        function toggleCart() {
-            const panel = document.getElementById('cart-panel');
-            const overlay = document.getElementById('cart-overlay');
-            
-            if (panel.classList.contains('hidden')) {
-                // Show panel drawer explicitly
-                panel.classList.remove('hidden');
-                overlay.classList.remove('hidden');
-                setTimeout(() => {
-                    panel.classList.remove('translate-x-full');
-                }, 10);
-            } else {
-                // Smooth hide slide animation execution
-                panel.classList.add('translate-x-full');
-                overlay.classList.add('hidden');
-                setTimeout(() => {
-                    panel.classList.add('hidden');
-                }, 300);
-            }
-        }
-
-        function sendWhatsAppOrder() {
-            const phoneInput = document.getElementById('customer-phone').value.trim();
-            const fulfillment = document.getElementById('fulfillment').value;
-            
-            if (Object.keys(cart).length === 0) { alert("Please add items to your cart first!"); return; }
-            if (!phoneInput) { alert("Please provide your phone number."); return; }
-
-            let orderText = `*New Order Request - Mino Pets*\n`;
-            orderText += `----------------------------------\n`;
-            let total = 0;
-            for (let id in cart) {
-                const item = products.find(p => p.id == id);
-                const quantity = cart[id];
-                const cost = item.price * quantity;
-                total += cost;
-                orderText += `▪️ ${quantity}x ${item.name} (${cost}/-)\n`;
-            }
-            orderText += `----------------------------------\n`;
-            orderText += `*Total:* ${total}/-\n`;
-            orderText += `*Method:* ${fulfillment}\n`;
-            orderText += `*Customer Contact:* ${phoneInput}\n\n`;
-            orderText += `Please confirm stock availability and pickup timeline!`;
-
-            window.open(`https://wa.me/${MY_WHATSAPP_NUMBER}?text=${encodeURIComponent(orderText)}`, '_blank');
-        }
+        }, 3000);
     </script>
 </body>
 </html>
