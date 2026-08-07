@@ -1,0 +1,8 @@
+{
+  "name": "mino-pets",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "serve": "npx serve -c serve.json ."
+  }
+}

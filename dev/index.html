@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <base href="/dev/">
+    <title>Mino Pets - Premium Aquarium Store</title>
+    <link rel="icon" href="/assets/favicon-32.png" type="image/png" sizes="32x32">
+    <link rel="apple-touch-icon" href="/assets/favicon-192.png" sizes="192x192">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        if (typeof tailwind !== 'undefined') {
+            tailwind.config = {
+                theme: {
+                    extend: {
+                        colors: {
+                            brand: {
+                                blue: '#004B93',
+                                'blue-dark': '#003A75',
+                                coral: '#ff7d00',
+                                'coral-dark': '#e06e00',
+                            }
+                        },
+                        fontFamily: {
+                            sans: ['Inter', 'system-ui', 'sans-serif'],
+                        },
+                        maxWidth: {
+                            /* Wider than 7xl (1280) so large desktops use side space */
+                            shell: '100rem', /* 1600px */
+                        },
+                    }
+                }
+            };
+        }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/store.css">
+</head>
+<body class="bg-[#F8FAFC] font-sans min-h-screen overflow-x-hidden antialiased flex flex-col">
+
+    <header class="sticky top-0 z-40 shadow-md">
+        <div class="bg-white border-b border-gray-200">
+            <div class="max-w-shell mx-auto px-4 lg:px-8 py-3 flex items-center gap-2 sm:gap-5 min-w-0">
+                <a href="." onclick="navigateTo('home'); return false;" class="flex items-center gap-2 flex-shrink-0">
+                    <img src="/assets/logo.png" alt="Mino Pets" class="h-12 sm:h-16 w-auto object-contain max-h-12 sm:max-h-16" onerror="this.style.display='none'; this.nextElementSibling.style.display='block'">
+                    <span class="hidden text-brand-blue font-extrabold text-xl tracking-tight">MINO</span>
+                </a>
+                <div class="flex-1 min-w-0 max-w-xl lg:max-w-2xl mx-auto">
+                    <div class="relative">
+                        <input type="search" id="search-input" placeholder="Search fishes, plants, shrimps…"
+                            class="w-full bg-gray-50 border border-gray-200 text-gray-800 placeholder-gray-400 rounded-full pl-5 pr-12 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/30 focus:border-brand-blue transition-shadow">
+                        <button class="absolute right-1 top-1/2 -translate-y-1/2 bg-brand-blue hover:bg-brand-blue-dark text-white rounded-full w-9 h-9 flex items-center justify-center transition-colors" aria-label="Search">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <button onclick="toggleCart()" class="flex items-center gap-1.5 text-brand-blue hover:text-brand-coral transition-colors flex-shrink-0 relative">
+                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                    <span class="hidden lg:inline font-semibold text-sm">Cart</span>
+                    <span id="cart-badge" class="absolute -top-1.5 -right-1.5 bg-brand-coral text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center hidden shadow-sm">0</span>
+                </button>
+            </div>
+        </div>
+        <nav class="bg-brand-blue text-white hidden md:block">
+            <div class="max-w-shell mx-auto px-4 lg:px-8 flex items-center justify-between">
+                <ul class="flex items-center gap-0 text-sm font-medium" id="category-nav"></ul>
+                <span class="text-xs text-white/80 py-3 pl-4 whitespace-nowrap hidden lg:block">Free local pickup on orders over ₹999</span>
+            </div>
+        </nav>
+        <div class="bg-brand-blue md:hidden overflow-x-auto max-w-full">
+            <div class="flex gap-1 px-3 py-2 text-xs font-medium whitespace-nowrap min-w-0" id="mobile-category-nav"></div>
+        </div>
+    </header>
+
+    <div class="bg-emerald-100 border-b border-emerald-200 text-center py-2 px-4 text-sm text-emerald-900 font-medium">
+        🎉 Free plant care guide with every live plant order this week!
+    </div>
+
+    <!-- Hero (homepage only) -->
+    <section id="hero-section" class="w-full max-w-shell mx-auto px-4 lg:px-8 pt-5 pb-2 overflow-x-hidden">
+        <div class="relative rounded-2xl overflow-hidden shadow-lg bg-white" id="hero-slider">
+            <div id="hero-slides" aria-live="polite">
+                <div class="hero-slide is-active" data-index="0">
+                    <div class="hero-slide-inner hero-slide-inner--sky">
+                        <div class="hero-slide-copy">
+                            <span class="hero-badge">New Arrivals</span>
+                            <h2 class="hero-title">Premium Live Aquatics</h2>
+                            <p class="hero-subtitle">Hand-picked ornamental fishes, shrimps &amp; plants delivered fresh to your door.</p>
+                            <a href="fish" onclick="navigateTo('fish'); return false;" class="hero-cta">Shop Collection</a>
+                        </div>
+                        <div class="hero-slide-image hero-slide-image--video">
+                            <video id="hero-video" class="hero-video" muted loop playsinline preload="none"
+                                poster="/assets/goldfish-poster.png" data-src="/assets/Gold-fish-vid.mp4"
+                                aria-label="Goldfish swimming in aquarium"></video>
+                        </div>
+                    </div>
+                </div>
+                <div class="hero-slide" data-index="1">
+                    <div class="hero-slide-inner hero-slide-inner--emerald">
+                        <div class="hero-slide-copy">
+                            <span class="hero-badge">20% Off</span>
+                            <h2 class="hero-title">Planted Tank Essentials</h2>
+                            <p class="hero-subtitle">Build stunning aquascapes with premium substrates, stones &amp; live plants.</p>
+                            <a href="plants" onclick="navigateTo('plants'); return false;" class="hero-cta">Explore Plants</a>
+                        </div>
+                        <div class="hero-slide-image">
+                            <img src="/assets/planted-tank.jpg" alt="Planted Tank Essentials" loading="lazy" decoding="async">
+                        </div>
+                    </div>
+                </div>
+                <div class="hero-slide" data-index="2">
+                    <div class="hero-slide-inner hero-slide-inner--amber">
+                        <div class="hero-slide-copy">
+                            <span class="hero-badge">Limited Stock</span>
+                            <h2 class="hero-title">Freshwater Shrimp Paradise</h2>
+                            <p class="hero-subtitle">Neocaridina colonies &amp; curated combo packs for your nano planted tanks.</p>
+                            <a href="shrimps" onclick="navigateTo('shrimps'); return false;" class="hero-cta">Shop Shrimps</a>
+                        </div>
+                        <div class="hero-slide-image">
+                            <img src="/assets/Cherry-shrimp.jpg" alt="Freshwater Shrimp Paradise" loading="lazy" decoding="async">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="hero-controls">
+                <button id="slider-pause" type="button" onclick="toggleSliderPause()" class="hero-pause-btn" title="Pause slideshow" aria-label="Pause slideshow">
+                    <svg id="pause-icon" width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/></svg>
+                    <svg id="play-icon" width="14" height="14" fill="currentColor" viewBox="0 0 24 24" class="hidden"><path d="M8 5v14l11-7z"/></svg>
+                </button>
+                <div id="slider-dots" class="flex items-center gap-1.5">
+                    <button type="button" onclick="goToSlide(0)" class="hero-dot is-active" aria-label="Slide 1"></button>
+                    <button type="button" onclick="goToSlide(1)" class="hero-dot" aria-label="Slide 2"></button>
+                    <button type="button" onclick="goToSlide(2)" class="hero-dot" aria-label="Slide 3"></button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Homepage view -->
+    <div id="view-home" class="w-full max-w-shell mx-auto px-4 lg:px-8 py-8 overflow-x-hidden">
+        <section class="mb-10">
+            <h2 class="text-2xl font-bold text-brand-blue tracking-tight">Shop by Category</h2>
+            <p class="text-gray-500 mt-1 text-sm">Browse fishes, shrimps, plants &amp; aquascape essentials</p>
+            <div id="category-cards" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mt-5"></div>
+        </section>
+        <section class="mb-10">
+            <div class="flex items-end justify-between mb-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-brand-blue tracking-tight">Deals &amp; New Arrivals</h2>
+                    <p class="text-gray-500 mt-1 text-sm">Limited-time offers on premium aquatics</p>
+                </div>
+                <button onclick="navigateTo('deals')" class="hidden sm:inline text-sm text-brand-coral font-semibold hover:underline flex-shrink-0">View all deals →</button>
+            </div>
+            <div id="deals-row" class="w-full max-w-full overflow-hidden"></div>
+            <button onclick="navigateTo('deals')" class="sm:hidden mt-3 text-sm text-brand-coral font-semibold hover:underline">View all deals →</button>
+        </section>
+        <section class="mb-10 bg-brand-blue/5 border border-brand-blue/10 rounded-2xl p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 overflow-hidden">
+            <div class="flex items-start gap-3">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 mt-1.5 flex-shrink-0"></span>
+                <div>
+                    <h3 class="font-bold text-brand-blue">
+                        <button type="button" onclick="openPolicy('live-arrival')" class="text-left hover:text-brand-coral transition-colors">100% Live Arrival Guarantee</button>
+                    </h3>
+                    <p class="text-sm text-gray-600 mt-1">Healthy livestock delivered with care. Questions? We're here to help.</p>
+                </div>
+            </div>
+            <a href="https://wa.me/919035559089?text=Hi%20Mino%20Pets%2C%20I%20have%20a%20question%20about%20the%20live%20arrival%20guarantee." target="_blank" rel="noopener"
+                class="flex-shrink-0 bg-brand-coral hover:bg-brand-coral-dark text-white font-bold px-5 py-2.5 rounded-full text-sm transition-colors">Chat with us</a>
+        </section>
+        <section class="mb-4">
+            <div class="flex items-end justify-between mb-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-brand-blue tracking-tight">Combo Packs</h2>
+                    <p class="text-gray-500 mt-1 text-sm">Curated bundles — fish, shrimps, plants &amp; accessories</p>
+                </div>
+            </div>
+            <div id="combos-row" class="w-full max-w-full overflow-hidden"></div>
+        </section>
+    </div>
+
+    <!-- Category view -->
+    <div id="view-category" class="hidden w-full max-w-shell mx-auto px-4 lg:px-8 py-6 overflow-x-hidden">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+            <nav id="breadcrumbs" class="text-sm"></nav>
+            <span id="product-count" class="text-sm text-gray-500"></span>
+        </div>
+        <div class="flex items-center justify-between gap-3 mb-4">
+            <h2 id="category-title" class="text-2xl sm:text-3xl font-bold text-brand-blue tracking-tight"></h2>
+            <button onclick="openFilterDrawer()" class="lg:hidden flex items-center gap-1.5 bg-white border border-gray-200 text-brand-blue font-semibold text-sm px-3 py-2 rounded-lg shadow-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18M3 12h18M3 20h18"/></svg>
+                Filters
+            </button>
+        </div>
+        <div id="subcategory-pills" class="flex gap-2 overflow-x-auto pb-2 mb-4 -mx-1 px-1"></div>
+        <div id="filter-chips" class="hidden flex flex-wrap gap-2 mb-4"></div>
+        <div class="flex gap-6 lg:gap-8">
+            <aside class="hidden lg:block w-56 flex-shrink-0">
+                <div id="filter-sidebar" class="filter-panel bg-white rounded-xl border border-gray-200 p-4 shadow-sm"></div>
+            </aside>
+            <div class="flex-1 min-w-0">
+                <div id="subsections-container"></div>
+                <div id="flat-grid-container" class="hidden">
+                    <div id="category-product-list" class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4"></div>
+                </div>
+                <p id="no-results" class="hidden text-center text-gray-400 py-12">No products found. Try adjusting your filters.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search view -->
+    <div id="view-search" class="hidden max-w-shell mx-auto px-4 lg:px-8 py-8">
+        <h2 id="search-title" class="text-2xl sm:text-3xl font-bold text-brand-blue tracking-tight">Search Results</h2>
+        <p id="search-subtitle" class="text-gray-500 mt-1 text-sm"></p>
+        <div id="search-product-list" class="grid grid-cols-2 lg:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4 mt-6"></div>
+        <p id="search-no-results" class="hidden text-center text-gray-400 py-12">No products found. Try a different search.</p>
+    </div>
+
+    <!-- Mobile filter drawer -->
+    <div id="filter-overlay" class="fixed inset-0 bg-black/40 z-50 opacity-0 invisible transition-opacity lg:hidden" onclick="closeFilterDrawer()"></div>
+    <div id="filter-drawer" class="fixed bottom-0 left-0 right-0 bg-white rounded-t-2xl z-50 transform translate-y-full transition-transform duration-300 max-h-[80vh] overflow-y-auto lg:hidden">
+        <div class="sticky top-0 bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between">
+            <h3 class="font-bold text-brand-blue">Filters</h3>
+            <button onclick="closeFilterDrawer()" class="text-gray-400 hover:text-brand-blue text-2xl font-bold w-8 h-8 flex items-center justify-center">&times;</button>
+        </div>
+        <div id="filter-drawer-content" class="p-4"></div>
+        <div class="sticky bottom-0 bg-white border-t border-gray-100 p-4">
+            <button onclick="closeFilterDrawer()" class="w-full bg-brand-blue text-white font-bold py-3 rounded-lg">Apply Filters</button>
+        </div>
+    </div>
+
+    <footer class="mt-auto">
+        <div class="footer-wave-wrap" aria-hidden="true">
+            <svg viewBox="0 0 1200 80" preserveAspectRatio="none" class="footer-wave">
+                <path class="footer-wave-path footer-wave-path--back"
+                    d="M0,28 Q150,58 300,28 T600,28 T900,28 T1200,28 V80 H0 Z"/>
+                <path class="footer-wave-path footer-wave-path--mid"
+                    d="M0,40 Q150,12 300,40 T600,40 T900,40 T1200,40 V80 H0 Z"/>
+                <path class="footer-wave-path footer-wave-path--front"
+                    d="M0,48 Q150,72 300,48 T600,48 T900,48 T1200,48 V80 H0 Z"/>
+            </svg>
+        </div>
+        <div class="bg-brand-blue text-white overflow-x-hidden">
+            <div class="max-w-shell mx-auto px-4 lg:px-8 py-3 sm:py-5 grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-3 sm:gap-y-5 lg:gap-4">
+                <div class="col-span-2 lg:col-span-1 flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <a href="." onclick="navigateTo('home'); return false;" class="inline-block bg-white rounded-md px-2 py-1">
+                            <img src="/assets/logo.png" alt="Mino Pets" class="h-6 sm:h-7 w-auto object-contain">
+                        </a>
+                        <p class="hidden sm:block text-xs text-white/60 leading-relaxed mt-2 max-w-xs">Premium livestock, hardy shrimp, and curated aquascaping essentials.</p>
+                        <div class="flex gap-2 mt-2 sm:mt-3">
+                            <a href="https://facebook.com" target="_blank" rel="noopener" aria-label="Facebook" class="footer-social w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/10 flex items-center justify-center text-white/80">
+                                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                            </a>
+                            <a href="https://youtube.com" target="_blank" rel="noopener" aria-label="YouTube" class="footer-social w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/10 flex items-center justify-center text-white/80">
+                                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                            </a>
+                            <a href="https://instagram.com/minopets.official" target="_blank" rel="noopener" aria-label="Instagram" class="footer-social w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/10 flex items-center justify-center text-white/80">
+                                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+                            </a>
+                            <a href="https://wa.me/919035559089?text=Hi%20Mino%20Pets%2C%20I%20need%20help%20with%20my%20order." target="_blank" rel="noopener" aria-label="WhatsApp" class="footer-social footer-social--wa w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/10 flex items-center justify-center">
+                                <img src="/assets/icons/whatsapp.png" alt="" class="w-4 h-4 sm:w-[1.15rem] sm:h-[1.15rem] object-contain">
+                            </a>
+                        </div>
+                    </div>
+                    <a href="https://wa.me/919035559089?text=Hi%20Mino%20Pets%2C%20I%20need%20help%20with%20my%20order." target="_blank" rel="noopener"
+                        class="sm:hidden chat-sonar flex-shrink-0 inline-flex items-center gap-1.5 bg-brand-coral hover:bg-brand-coral-dark text-white font-bold px-3.5 py-2 rounded-full text-xs shadow-md">
+                        <img src="/assets/icons/whatsapp.png" alt="" class="w-4 h-4 object-contain">
+                        Chat
+                    </a>
+                </div>
+                <div>
+                    <h3 class="footer-heading text-xs uppercase tracking-widest text-white/50 font-semibold mb-1.5 sm:mb-3">Explore</h3>
+                    <ul class="footer-links flex flex-col space-y-1 sm:space-y-2 text-xs sm:text-sm">
+                        <li><button onclick="footerFilter('Fish')" class="footer-link">Fishes</button></li>
+                        <li><button onclick="footerFilter('Shrimps')" class="footer-link">Shrimps</button></li>
+                        <li><button onclick="footerFilter('Plants')" class="footer-link">Plants</button></li>
+                        <li><button onclick="footerFilter('Accessories')" class="footer-link">Accessories</button></li>
+                        <li><button onclick="footerFilter('Aquarium')" class="footer-link">Aquarium</button></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="footer-heading text-xs uppercase tracking-widest text-white/50 font-semibold mb-1.5 sm:mb-3">Support</h3>
+                    <ul class="footer-links flex flex-col space-y-1 sm:space-y-2 text-xs sm:text-sm">
+                        <li><button type="button" onclick="openPolicy('live-arrival')" class="footer-link inline-flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0"></span><span class="sm:hidden">Live Guarantee</span><span class="hidden sm:inline">Live Arrival Guarantee</span></button></li>
+                        <li><button type="button" onclick="openPolicy('shipping')" class="footer-link"><span class="sm:hidden">Shipping</span><span class="hidden sm:inline">Shipping Policy</span></button></li>
+                        <li><button type="button" onclick="openPolicy('refund')" class="footer-link"><span class="sm:hidden">Refunds</span><span class="hidden sm:inline">Refund &amp; Cancellation Policy</span></button></li>
+                        <li><a href="https://wa.me/919035559089?text=Hi%20Mino%20Pets%2C%20I%20want%20to%20track%20my%20order." target="_blank" rel="noopener" class="footer-link"><span class="sm:hidden">Track Order</span><span class="hidden sm:inline">Track Your Order</span></a></li>
+                        <li><button type="button" onclick="openPolicy('care-guides')" class="footer-link">Care Guides</button></li>
+                    </ul>
+                </div>
+                <div class="hidden sm:block lg:col-span-1">
+                    <h3 class="footer-heading text-xs uppercase tracking-widest text-white/50 font-semibold mb-3">Connect</h3>
+                    <a href="https://wa.me/919035559089?text=Hi%20Mino%20Pets%2C%20I%20need%20help%20with%20my%20order." target="_blank" rel="noopener"
+                        class="chat-sonar inline-flex items-center gap-2 bg-brand-coral hover:bg-brand-coral-dark text-white font-bold px-5 py-2.5 rounded-full text-sm transition-colors duration-300 shadow-md">
+                        <img src="/assets/icons/whatsapp.png" alt="" class="w-5 h-5 object-contain">
+                        Chat Now
+                    </a>
+                </div>
+            </div>
+            <div class="border-t border-white/10 bg-brand-blue-dark">
+                <div class="max-w-shell mx-auto px-4 lg:px-8 py-2 sm:py-3 flex flex-row items-center justify-between gap-2 text-[10px] sm:text-xs text-white/50">
+                    <p><span class="sm:hidden">© 2026 Mino Pets</span><span class="hidden sm:inline">© 2026 Mino Pets. All rights reserved.</span></p>
+                    <div class="flex items-center gap-2 text-white/40">
+                        <span class="px-2 py-0.5 border border-white/20 rounded text-[10px] font-medium">UPI</span>
+                        <span class="px-2 py-0.5 border border-white/20 rounded text-[10px] font-medium">VISA</span>
+                        <span class="px-2 py-0.5 border border-white/20 rounded text-[10px] font-medium">MC</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <button id="scroll-top" onclick="scrollToTop()" aria-label="Scroll to top" class="fixed bottom-6 right-6 z-40 group">
+        <span class="scroll-top-inner relative flex items-center justify-center w-12 h-12 rounded-full bg-brand-coral shadow-lg shadow-brand-coral/30 border-2 border-white/20 hover:bg-brand-coral-dark transition-colors duration-300">
+            <svg class="scroll-top-arrow w-5 h-5 text-white transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/></svg>
+            <span class="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-brand-blue border border-white/40"></span>
+        </span>
+    </button>
+
+    <div id="cart-overlay" onclick="toggleCart()" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 hidden transition-opacity duration-300"></div>
+    <div id="cart-panel" class="cart-panel fixed top-0 right-0 h-full max-h-[100dvh] w-[min(100vw,450px)] bg-white p-6 shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-in-out hidden flex flex-col overflow-hidden">
+        <div class="flex justify-between items-center pb-4 border-b border-brand-blue/10 mb-4 shrink-0">
+            <h2 class="text-xl font-bold text-brand-blue">Your Order Summary</h2>
+            <button onclick="toggleCart()" class="text-gray-400 hover:text-brand-blue hover:bg-gray-100 rounded-full w-9 h-9 flex items-center justify-center text-2xl font-bold transition-colors duration-200">&times;</button>
+        </div>
+        <div id="cart-panel-scroll" class="cart-panel-scroll flex-1 min-h-0 overflow-y-auto overscroll-contain pr-1">
+        <div id="cart-active-summary">
+        <div id="cart-items" class="space-y-3 mb-4">
+            <p class="text-gray-400 italic text-sm">Your cart is empty.</p>
+        </div>
+        <div class="space-y-2 mb-4 pt-4 border-t border-brand-blue/10">
+            <div class="flex justify-between text-sm text-gray-600">
+                <span>Subtotal</span>
+                <span>₹<span id="cart-subtotal">0</span>/-</span>
+            </div>
+            <div id="cart-mrp-savings-row" class="hidden justify-between text-sm text-emerald-700">
+                <span>You saved</span>
+                <span>₹<span id="cart-mrp-savings">0</span>/-</span>
+            </div>
+            <div id="cart-shipping-row" class="hidden justify-between text-sm">
+                <span id="cart-shipping-label" class="text-gray-600">Shipping</span>
+                <span id="cart-shipping-value" class="font-medium"></span>
+            </div>
+            <div id="cart-discount-row" class="hidden justify-between text-sm text-emerald-700">
+                <span>Coupon (<span id="cart-coupon-label"></span>)</span>
+                <span>−₹<span id="cart-discount">0</span>/-</span>
+            </div>
+            <div class="flex justify-between font-bold text-lg text-brand-blue pt-1">
+                <span>Total:</span>
+                <span>₹<span id="cart-total">0</span>/-</span>
+            </div>
+            <p id="cart-shipping-hint" class="hidden text-xs text-emerald-600"></p>
+        </div>
+        </div>
+        <div id="checkout-form" class="space-y-3 pt-2 border-t border-brand-blue/10 pb-2">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1" for="customer-name">Your name <span class="text-red-500" aria-hidden="true">*</span></label>
+                <input type="text" id="customer-name" autocomplete="name" placeholder="Full name" required
+                    class="w-full border border-brand-blue/20 p-2.5 rounded-lg focus:ring-2 focus:ring-brand-coral/40 focus:border-brand-coral outline-none">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1" for="customer-phone">Phone number <span class="text-red-500" aria-hidden="true">*</span></label>
+                <input type="tel" id="customer-phone" autocomplete="tel" placeholder="e.g. 9876543210" required
+                    class="w-full border border-brand-blue/20 p-2.5 rounded-lg focus:ring-2 focus:ring-brand-coral/40 focus:border-brand-coral outline-none"
+                    onblur="lookupCustomerIfPossible()">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1" for="coupon-code">Coupon code <span class="text-gray-400 font-normal">(optional)</span></label>
+                <div class="flex gap-2">
+                    <input type="text" id="coupon-code" autocomplete="off" placeholder="e.g. DMG-AB12CD"
+                        class="flex-1 border border-brand-blue/20 p-2.5 rounded-lg focus:ring-2 focus:ring-brand-coral/40 focus:border-brand-coral outline-none uppercase">
+                    <button type="button" onclick="applyCoupon()"
+                        class="shrink-0 px-3 py-2 rounded-lg border border-brand-blue/20 text-sm font-semibold text-brand-blue hover:bg-slate-50">
+                        Apply
+                    </button>
+                </div>
+                <p id="coupon-msg" class="hidden text-xs mt-1.5"></p>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1" id="fulfillment-label-text">Fulfillment <span class="text-red-500" aria-hidden="true">*</span></label>
+                <input type="hidden" id="fulfillment" value="">
+                <div class="pack-dd fulfillment-dd" id="fulfillment-dd">
+                    <button type="button" class="pack-dd-trigger" id="fulfillment-trigger"
+                        aria-haspopup="listbox" aria-expanded="false" aria-labelledby="fulfillment-label-text"
+                        onclick="toggleFulfillmentMenu(event)">
+                        <span class="pack-dd-label" id="fulfillment-display">
+                            <span class="pack-dd-name is-placeholder">Select your fulfillment method</span>
+                        </span>
+                        <svg class="pack-dd-chevron" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                            <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    <div class="pack-dd-menu" role="listbox" aria-labelledby="fulfillment-label-text">
+                        <button type="button" role="option" class="pack-dd-option" data-fulfillment="Store Pickup"
+                            aria-selected="false"
+                            onclick="setFulfillmentValue('Store Pickup', event)">
+                            <span class="pack-dd-check" aria-hidden="true">✓</span>
+                            <span class="pack-dd-option-label">Self Pickup</span>
+                            <span class="pack-dd-option-price">Free</span>
+                        </button>
+                        <button type="button" role="option" class="pack-dd-option" data-fulfillment="Local Delivery"
+                            aria-selected="false"
+                            onclick="setFulfillmentValue('Local Delivery', event)">
+                            <span class="pack-dd-check" aria-hidden="true">✓</span>
+                            <span class="pack-dd-option-label">Home Delivery</span>
+                            <span class="pack-dd-option-price">₹150</span>
+                        </button>
+                    </div>
+                </div>
+                <p id="fulfillment-delivery-hint" class="text-xs text-gray-500 mt-1.5">Home Delivery: ₹150/- (free on orders ₹1000+)</p>
+                <p id="pickup-location-hint" class="hidden text-xs text-brand-blue mt-1.5">
+                    Pickup location:
+                    <a id="pickup-maps-link" href="#" target="_blank" rel="noopener"
+                        class="font-semibold underline underline-offset-2 hover:text-brand-coral">
+                        Open in Google Maps
+                    </a>
+                </p>
+            </div>
+            <div id="checkout-address-fields" class="hidden space-y-3">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1" for="customer-address">Delivery address <span class="text-red-500" aria-hidden="true">*</span></label>
+                    <textarea id="customer-address" rows="2" autocomplete="street-address" placeholder="House / street / landmark"
+                        class="w-full border border-brand-blue/20 p-2.5 rounded-lg focus:ring-2 focus:ring-brand-coral/40 focus:border-brand-coral outline-none resize-none"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1" for="customer-pincode">Pincode <span class="text-red-500" aria-hidden="true">*</span></label>
+                    <input type="text" id="customer-pincode" inputmode="numeric" autocomplete="postal-code" placeholder="e.g. 560001"
+                        class="w-full border border-brand-blue/20 p-2.5 rounded-lg focus:ring-2 focus:ring-brand-coral/40 focus:border-brand-coral outline-none">
+                </div>
+            </div>
+            <p class="text-[11px] text-gray-400"><span class="text-red-500">*</span> Required</p>
+            <p id="checkout-error" class="hidden text-sm text-red-600 font-medium" role="alert"></p>
+            <button type="button" id="place-order-btn" onclick="placeOrder()" disabled
+                class="w-full bg-brand-blue text-white font-bold py-3.5 px-4 rounded-lg shadow-md transition-all duration-200 opacity-50 cursor-not-allowed">
+                Place order
+            </button>
+            <button type="button" onclick="sendWhatsAppOrder()"
+                class="w-full text-sm text-brand-blue/80 hover:text-brand-blue underline-offset-2 hover:underline py-1">
+                Or message shop on WhatsApp
+            </button>
+        </div>
+        <div id="checkout-success" class="hidden space-y-3 pt-2 border-t border-brand-blue/10 pb-2">
+            <p class="text-sm font-semibold text-emerald-700">Order created — stock reserved</p>
+            <p class="text-sm text-gray-700">Order ID: <span id="success-order-id" class="font-bold text-brand-blue"></span></p>
+            <p class="text-sm text-gray-700">Pay exactly: <span class="font-bold text-brand-blue">₹<span id="success-order-total"></span>/-</span></p>
+            <p id="success-discount-wrap" class="hidden text-sm text-emerald-700">Coupon saved you ₹<span id="success-order-discount"></span>/-</p>
+            <p class="text-xs text-gray-500">Hold expires: <span id="success-order-until"></span></p>
+
+            <div id="pay-phonepe-block" class="hidden space-y-2">
+                <button type="button" id="phonepe-pay-btn" onclick="startPhonePePayment()"
+                    class="w-full bg-brand-blue hover:bg-brand-blue-dark active:scale-[0.98] text-white font-bold py-3.5 px-4 rounded-lg shadow-md transition-all duration-200">
+                    Pay with PhonePe
+                </button>
+                <button type="button" id="phonepe-check-btn" onclick="confirmPhonePePayment()"
+                    class="hidden w-full border-2 border-brand-blue text-brand-blue hover:bg-brand-blue/5 font-bold py-2.5 px-4 rounded-lg text-sm transition-colors">
+                    Check payment status
+                </button>
+                <p id="phonepe-status-msg" class="hidden text-sm text-emerald-700 font-medium"></p>
+                <p id="phonepe-status-err" class="hidden text-sm text-red-600 font-medium"></p>
+            </div>
+
+            <details id="pay-upi-details" class="rounded-xl border border-brand-blue/15 bg-slate-50 open:pb-0">
+                <summary id="pay-upi-summary" class="hidden cursor-pointer text-sm font-semibold text-brand-blue px-3 py-2.5 list-none">
+                    Pay manually via UPI instead
+                </summary>
+                <div id="pay-instructions" class="p-3 space-y-2">
+                    <p class="text-xs font-bold uppercase tracking-wide text-brand-blue">Pay via UPI</p>
+                    <p class="text-sm text-gray-800">UPI ID: <span id="pay-upi-id" class="font-semibold select-all"></span>
+                        <button type="button" onclick="copyPayUpi()" class="text-xs text-brand-coral font-semibold ml-1 underline">Copy</button>
+                    </p>
+                    <p class="text-xs text-gray-500">Payee: <span id="pay-upi-name"></span></p>
+                    <p class="text-xs text-amber-800 bg-amber-50 rounded-lg px-2 py-1.5">Put the <span class="font-semibold">Order ID</span> in the UPI note/remark so we can match payment.</p>
+                    <a id="pay-upi-link" href="#" class="hidden w-full text-center bg-brand-blue hover:bg-brand-blue-dark text-white font-bold py-2.5 px-4 rounded-lg text-sm transition-colors">Open UPI app</a>
+                    <img id="pay-upi-qr" alt="UPI QR" class="hidden mx-auto w-40 h-40 rounded-lg bg-white border border-gray-200" width="160" height="160">
+                    <button type="button" id="report-paid-btn" onclick="reportPayment()"
+                        class="w-full bg-emerald-700 hover:bg-emerald-800 active:scale-[0.98] text-white font-bold py-3 px-4 rounded-lg shadow-md transition-all duration-200">
+                        I have paid
+                    </button>
+                </div>
+            </details>
+
+            <p id="pay-report-msg" class="hidden text-sm text-emerald-700 font-medium"></p>
+            <p id="pay-report-err" class="hidden text-sm text-red-600 font-medium"></p>
+            <button type="button" id="success-whatsapp-btn" onclick="shareOrderOnWhatsApp()"
+                class="w-full bg-brand-coral hover:bg-brand-coral-dark active:scale-[0.98] text-white font-bold py-3 px-4 rounded-lg shadow-md transition-all duration-200">
+                Share order on WhatsApp
+            </button>
+            <button type="button" onclick="resetCheckoutForm()"
+                class="w-full text-sm text-gray-500 hover:text-brand-blue py-1">
+                Place another order
+            </button>
+        </div>
+        </div>
+    </div>
+
+    <div id="mobile-cart-bar" class="fixed bottom-0 left-0 right-0 bg-brand-blue text-white p-4 flex justify-between items-center shadow-2xl hidden z-30 border-t border-brand-blue-dark/30">
+        <div class="font-medium"><span id="mobile-cart-count">0</span> items selected</div>
+        <button onclick="toggleCart()" class="bg-brand-coral hover:bg-brand-coral-dark active:scale-95 text-white font-bold px-5 py-2.5 rounded-lg text-sm transition-all duration-200 shadow-md">Review &amp; Order</button>
+    </div>
+
+    <!-- Product detail modal (Option 4) -->
+    <div id="pdp-backdrop" class="pdp-backdrop" onclick="closeProductDetail()"></div>
+    <div id="pdp" class="pdp" aria-hidden="true">
+        <div class="sticky top-0 z-10 bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3">
+            <button type="button" onclick="closeProductDetail()" class="text-brand-blue font-semibold text-sm">← Back</button>
+        </div>
+        <div class="p-4 sm:p-5" id="pdp-body"></div>
+    </div>
+    <div id="lightbox" class="lightbox" onclick="closePdpLightbox()">
+        <button type="button" class="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/90 text-brand-blue font-bold text-xl" aria-label="Close" onclick="event.stopPropagation(); closePdpLightbox()">×</button>
+        <div id="lightbox-media" onclick="event.stopPropagation()"></div>
+    </div>
+
+    <!-- Policy pages (footer) -->
+    <div id="policy-backdrop" class="pdp-backdrop" onclick="closePolicy()"></div>
+    <div id="policy" class="pdp policy-panel" aria-hidden="true" role="dialog" aria-labelledby="policy-title">
+        <div class="policy-header sticky top-0 z-10">
+            <h2 id="policy-title" class="truncate"></h2>
+            <button type="button" onclick="closePolicy()" class="policy-close flex-shrink-0" aria-label="Close">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+        </div>
+        <div id="policy-hero" class="policy-hero" hidden>
+            <img id="policy-hero-img" src="" alt="">
+        </div>
+        <div class="policy-scroll">
+            <div id="policy-body" class="policy-prose"></div>
+        </div>
+    </div>
+
+    <script src="/products.js"></script>
+    <script src="/filter-config.js"></script>
+    <script src="js/product-images.js"></script>
+    <script src="js/price-display.js"></script>
+    <script src="js/api-config.js"></script>
+    <script src="js/stock.js"></script>
+    <script src="js/packs.js"></script>
+    <script src="js/catalog-load.js"></script>
+    <script src="js/hero.js"></script>
+    <script src="js/cart.js"></script>
+    <script src="js/checkout.js"></script>
+    <script src="js/nav.js"></script>
+    <script src="js/catalog.js"></script>
+    <script src="js/product-detail.js"></script>
+    <script src="js/policies.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

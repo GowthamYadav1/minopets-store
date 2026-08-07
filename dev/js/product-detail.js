@@ -1,0 +1,255 @@
+/**
+ * Product detail modal (Option 4 hybrid).
+ * Gallery + description/details + pack or simple qty controls.
+ */
+
+let pdpOpenId = null;
+let pdpMedia = [];
+let pdpMediaIndex = 0;
+let pdpOpenToken = 0;
+
+function getProductDetailBullets(product) {
+    if (!product) return [];
+    if (Array.isArray(product.details) && product.details.length) {
+        return product.details.map(String).filter(Boolean);
+    }
+    return [];
+}
+
+function getComboIncludeLabels(product) {
+    if (!product?.isCombo) return [];
+    if (!Array.isArray(product?.comboItems) || !product.comboItems.length) return [];
+    return product.comboItems
+        .map((ci) => (typeof comboItemLabel === 'function' ? comboItemLabel(ci) : String(ci)))
+        .filter(Boolean);
+}
+
+function buildPdpMedia(product, galleryUrls) {
+    const list = [];
+    const gallery = Array.isArray(galleryUrls)
+        ? galleryUrls
+        : (product.image ? [product.image] : []);
+    gallery.forEach((src) => {
+        if (src) list.push({ type: 'image', src });
+    });
+    if (product.videoUrl) {
+        // Keep original URL; renderProductVideoHtml converts Drive links to embed.
+        list.push({ type: 'video', src: String(product.videoUrl).trim() });
+    }
+    if (!list.length && product.image) {
+        list.push({ type: 'image', src: product.image });
+    }
+    return list;
+}
+
+function renderPdpMainMedia({ autoplay = false } = {}) {
+    const m = pdpMedia[pdpMediaIndex];
+    if (!m) return '<div class="w-full h-full bg-slate-100"></div>';
+    if (m.type === 'video') {
+        if (typeof renderProductVideoHtml === 'function') {
+            return renderProductVideoHtml(m.src, 'w-full h-full object-cover pdp-video', { autoplay });
+        }
+        return `<video src="${typeof escapeHtmlAttr === 'function' ? escapeHtmlAttr(m.src) : m.src}" class="w-full h-full object-cover" controls playsinline${autoplay ? ' autoplay' : ''}></video>`;
+    }
+    const sku = products.find((p) => p.id == pdpOpenId)?.sku || '';
+    return `<img src="${m.src}" alt="" class="w-full h-full object-cover cursor-zoom-in"
+        ${sku ? `data-sku="${String(sku).replace(/"/g, '&quot;')}" data-img-index="${pdpMediaIndex + 1}"` : ''}
+        onclick="openPdpLightbox()"
+        onerror="typeof handleProductImgError==='function'?handleProductImgError(this):(this.onerror=null)">`;
+}
+
+function setPdpMedia(index) {
+    if (!pdpMedia.length) return;
+    pdpMediaIndex = Math.max(0, Math.min(index, pdpMedia.length - 1));
+    const stage = document.getElementById('pdp-stage');
+    const isVideo = pdpMedia[pdpMediaIndex]?.type === 'video';
+    if (stage) {
+        // autoplay=true when picking the video thumb — uses the tap as the play gesture
+        stage.innerHTML = renderPdpMainMedia({ autoplay: isVideo });
+        if (typeof bindPdpVideoLoading === 'function') bindPdpVideoLoading(stage);
+        if (isVideo && typeof tryStartPdpVideo === 'function') tryStartPdpVideo(stage);
+    }
+    document.querySelectorAll('#pdp-thumbs .thumb').forEach((t, i) => {
+        t.classList.toggle('is-active', i === pdpMediaIndex);
+    });
+}
+
+function openPdpLightbox() {
+    const m = pdpMedia[pdpMediaIndex];
+    if (!m) return;
+    const box = document.getElementById('lightbox-media');
+    const lb = document.getElementById('lightbox');
+    if (!box || !lb) return;
+    if (m.type === 'video') {
+        if (typeof renderProductVideoHtml === 'function') {
+            box.innerHTML = renderProductVideoHtml(m.src, 'max-w-full pdp-video');
+            if (typeof bindPdpVideoLoading === 'function') bindPdpVideoLoading(box);
+        } else {
+            box.innerHTML = `<video src="${m.src}" controls autoplay playsinline class="max-w-full"></video>`;
+        }
+    } else {
+        box.innerHTML = `<img src="${m.src}" alt="">`;
+    }
+    lb.classList.add('is-open');
+}
+
+function closePdpLightbox() {
+    const lb = document.getElementById('lightbox');
+    const box = document.getElementById('lightbox-media');
+    if (lb) lb.classList.remove('is-open');
+    if (box) box.innerHTML = '';
+}
+
+async function openProductDetail(productId) {
+    const product = products.find((p) => p.id == productId);
+    if (!product) return;
+
+    const token = ++pdpOpenToken;
+    pdpOpenId = product.id;
+    pdpMediaIndex = 0;
+
+    // Only include image files that exist (-01, -02, -03… stop at first gap).
+    const gallery = typeof resolveProductGalleryUrls === 'function'
+        ? await resolveProductGalleryUrls(product)
+        : (product.image ? [product.image] : []);
+    if (token !== pdpOpenToken) return;
+
+    pdpMedia = buildPdpMedia(product, gallery);
+
+    const hasPacks = typeof productHasPacks === 'function' && productHasPacks(product);
+    const available = typeof getAvailableStock === 'function'
+        ? getAvailableStock(product.id)
+        : (product.available ?? null);
+    const unit = typeof packUnitLabel === 'function' ? packUnitLabel(product) : 'fish';
+    const bullets = getProductDetailBullets(product);
+    const includes = getComboIncludeLabels(product);
+
+    let buySection = '';
+    if (hasPacks) {
+        const inStock = available == null
+            ? true
+            : available > 0 && getProductPackOptions(product).some((p) => available >= p.units);
+        buySection = inStock
+            ? `<h3 class="pdp-section-title text-base font-bold text-brand-blue mb-1">Choose pack</h3>
+               <p id="pack-from-${product.id}" class="text-xs text-slate-400 mb-1.5">${available != null ? `${available} ${unit} in stock · options share stock` : 'Options'}</p>
+               ${typeof renderPackOptionsHtml === 'function' ? renderPackOptionsHtml(product, available) : ''}`
+            : `<p class="text-brand-coral font-bold text-base">Out of Stock</p>`;
+    } else {
+        const max = typeof maxQtyForProduct === 'function' ? maxQtyForProduct(product.id) : (product.inStock ? 999 : 0);
+        const qty = AppState.cart[product.id] || 0;
+        const inStock = max > 0;
+        const top = typeof renderPriceBTopHtml === 'function'
+            ? renderPriceBTopHtml(product.price, product.mrp)
+            : `<span class="price-solo">₹${product.price}/-</span>`;
+        const save = typeof renderPriceBSaveHtml === 'function'
+            ? renderPriceBSaveHtml(product.price, product.mrp)
+            : '';
+        buySection = inStock
+            ? `<div class="pdp-price-b pdp-buy-simple">
+                   <div class="buy-row buy-row-pdp">
+                       ${top}
+                       <div class="stepper flex-shrink-0">
+                           <button type="button" data-minus-id="${product.id}" onclick="updateQty(${product.id}, -1)"
+                               class="qty-minus-btn step-btn minus ${qty <= 0 ? 'is-disabled' : ''}"
+                               ${qty <= 0 ? 'disabled' : ''} aria-label="Decrease quantity">−</button>
+                           <span id="qty-${product.id}" class="step-qty font-bold text-brand-blue">${qty}</span>
+                           <span id="pdp-simple-qty-${product.id}" class="hidden">${qty}</span>
+                           <button type="button" data-plus-id="${product.id}" onclick="updateQty(${product.id}, 1)"
+                               class="qty-plus-btn step-btn plus ${qty >= max ? 'is-disabled' : ''}"
+                               ${qty >= max ? 'disabled' : ''} aria-label="Increase quantity">+</button>
+                       </div>
+                   </div>
+                   ${save}
+                   <div class="price-b-tax">Inclusive of all taxes</div>
+               </div>`
+            : `<p class="text-brand-coral font-bold text-sm">Out of Stock</p>`;
+    }
+
+    const thumbs = pdpMedia.map((m, i) => `
+        <button type="button" class="thumb ${i === 0 ? 'is-active' : ''} ${m.type === 'video' ? 'thumb-video' : ''}"
+            onclick="setPdpMedia(${i})" aria-label="${m.type === 'video' ? 'Play video' : 'View photo ' + (i + 1)}">
+            ${m.type === 'video'
+                ? `<img src="${(pdpMedia.find((x) => x.type === 'image') || {}).src || ''}" class="w-full h-full object-cover" alt="">`
+                : `<img src="${m.src}" class="w-full h-full object-cover" alt=""
+                    onerror="typeof handleProductImgError==='function'?handleProductImgError(this):(this.onerror=null)">`}
+        </button>`).join('');
+
+    const descHtml = product.description
+        ? `<p class="pdp-desc text-base text-slate-600 mt-4 leading-relaxed">${product.description}</p>`
+        : '';
+    const includesHtml = includes.length ? `
+        <h3 class="pdp-section-title text-base font-bold text-brand-blue mt-4 mb-1.5">Includes</h3>
+        <ul class="detail-list pdp-detail-list mb-3">${includes.map((d) => `<li>${d}</li>`).join('')}</ul>
+    ` : '';
+    const detailsHtml = bullets.length ? `
+        <h3 class="pdp-section-title text-base font-bold text-brand-blue mt-4 mb-1.5">Details</h3>
+        <ul class="detail-list pdp-detail-list mb-4">${bullets.map((d) => `<li>${d}</li>`).join('')}</ul>
+    ` : '';
+
+    document.getElementById('pdp-body').innerHTML = `
+        <div class="grid lg:grid-cols-2 gap-4 lg:gap-5 items-start">
+            <div class="min-w-0">
+                <div id="pdp-stage" class="rounded-xl overflow-hidden bg-slate-100 border border-slate-200 aspect-[4/3]">
+                    ${renderPdpMainMedia()}
+                </div>
+                ${pdpMedia.length > 1 ? `
+                    <div id="pdp-thumbs" class="flex gap-2 mt-2.5 overflow-x-auto pb-1">${thumbs}</div>
+                    <p class="text-xs text-slate-400 mt-1.5">Tap a thumb to switch · tap main photo to enlarge</p>
+                ` : ''}
+            </div>
+            <div class="min-w-0 pdp-info">
+                <h2 class="pdp-title text-2xl sm:text-[1.75rem] font-bold text-brand-blue leading-snug">${product.name}</h2>
+                <div class="mt-3">${buySection}</div>
+                ${descHtml}
+                ${includesHtml}
+                ${detailsHtml}
+                <button type="button" onclick="closeProductDetail()"
+                    class="mt-3 w-full py-3 rounded-xl bg-brand-blue text-white font-bold text-base">Continue shopping</button>
+            </div>
+        </div>`;
+
+    if (typeof bindPdpVideoLoading === 'function') {
+        bindPdpVideoLoading(document.getElementById('pdp-stage'));
+    }
+
+    const pdp = document.getElementById('pdp');
+    const backdrop = document.getElementById('pdp-backdrop');
+    pdp.classList.add('is-open');
+    backdrop.classList.add('is-open');
+    pdp.setAttribute('aria-hidden', 'false');
+    pdp.dataset.pid = String(product.id);
+    document.body.classList.add('pdp-open');
+
+    if (hasPacks && typeof syncPackCardUI === 'function') syncPackCardUI(product.id);
+    if (!hasPacks && typeof syncQtyControls === 'function') syncQtyControls(product.id);
+}
+
+/** Called after cart changes — pack rows already synced in place; refresh simple qty in open PDP. */
+function refreshOpenProductDetail(productId) {
+    if (pdpOpenId == null || String(pdpOpenId) !== String(productId)) return;
+    const pdp = document.getElementById('pdp');
+    if (!pdp?.classList.contains('is-open')) return;
+    const qtyEl = document.getElementById(`qty-${productId}`);
+    if (qtyEl) qtyEl.textContent = String(AppState.cart[productId] || 0);
+}
+
+function closeProductDetail() {
+    closePdpLightbox();
+    const pdp = document.getElementById('pdp');
+    const backdrop = document.getElementById('pdp-backdrop');
+    if (pdp) {
+        pdp.classList.remove('is-open');
+        pdp.setAttribute('aria-hidden', 'true');
+        delete pdp.dataset.pid;
+    }
+    if (backdrop) backdrop.classList.remove('is-open');
+    document.body.classList.remove('pdp-open');
+    pdpOpenId = null;
+    if (typeof closeAllPackMenus === 'function') closeAllPackMenus();
+}
+
+document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    closePdpLightbox();
+    closeProductDetail();
+});
