@@ -143,30 +143,95 @@ function googleDriveFileId(url) {
 }
 
 /**
+ * Parse YouTube / Shorts URLs.
+ * Shorts → vertical (9:16) player. watch / youtu.be / embed → landscape unless marked.
+ * @returns {{ id: string, vertical: boolean }|null}
+ */
+function youtubeVideoMeta(url) {
+    const s = String(url || '').trim();
+    if (!s || !/youtu\.?be|youtube\.com/i.test(s)) return null;
+
+    let id = null;
+    let vertical = false;
+
+    let m = s.match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]{6,})/i);
+    if (m) {
+        id = m[1];
+        vertical = true;
+    }
+    if (!id) {
+        m = s.match(/youtu\.be\/([a-zA-Z0-9_-]{6,})/i);
+        if (m) id = m[1];
+    }
+    if (!id) {
+        m = s.match(/youtube\.com\/(?:embed|live|v)\/([a-zA-Z0-9_-]{6,})/i);
+        if (m) id = m[1];
+    }
+    if (!id) {
+        m = s.match(/[?&]v=([a-zA-Z0-9_-]{6,})/i);
+        if (m) id = m[1];
+    }
+    if (!id) return null;
+
+    // Allow Sheet to force vertical: …&vertical=1 or …#vertical
+    if (/[?&#]vertical=1\b/i.test(s) || /[?&#]aspect=vertical\b/i.test(s)) {
+        vertical = true;
+    }
+    return { id, vertical };
+}
+
+function youtubeEmbedSrc(videoId, { autoplay = false } = {}) {
+    const id = String(videoId || '').trim();
+    if (!id) return '';
+    const params = new URLSearchParams({
+        playsinline: '1',
+        rel: '0',
+        modestbranding: '1'
+    });
+    if (autoplay) {
+        params.set('autoplay', '1');
+        // Mobile autoplay policies usually require mute; user can unmute in player
+        params.set('mute', '1');
+    }
+    return `https://www.youtube.com/embed/${encodeURIComponent(id)}?${params.toString()}`;
+}
+
+/**
  * Normalize product video_url for the PDP player.
- * Drive /view links are not valid <video src> — use Drive preview iframe by default.
- * When autoplay is requested, prefer a native <video> (so thumb-tap can call play()).
+ * Prefer YouTube/Shorts (best on mobile). Drive kept as fallback (phone opens Drive app/site).
  * Direct .mp4 / CDN URLs stay as native <video>.
- * @returns {{ mode: 'iframe'|'video', src: string, drivePreview?: string }|null}
+ * @returns {{ mode: 'iframe'|'video', src: string, provider?: string, youtubeId?: string, vertical?: boolean, driveId?: string, viewUrl?: string }|null}
  */
 function normalizeProductVideo(url, { autoplay = false } = {}) {
     const raw = String(url || '').trim();
     if (!raw) return null;
+
+    const yt = youtubeVideoMeta(raw);
+    if (yt) {
+        return {
+            mode: 'iframe',
+            provider: 'youtube',
+            youtubeId: yt.id,
+            vertical: yt.vertical,
+            src: youtubeEmbedSrc(yt.id, { autoplay }),
+            viewUrl: yt.vertical
+                ? `https://www.youtube.com/shorts/${yt.id}`
+                : `https://www.youtube.com/watch?v=${yt.id}`
+        };
+    }
+
     const driveId = googleDriveFileId(raw);
     if (driveId) {
         const preview = `https://drive.google.com/file/d/${driveId}/preview`;
-        if (autoplay) {
-            // Native <video> so thumb-tap can call play() in the same gesture.
-            // lh3 often streams public Drive files; falls back to iframe on error.
-            return {
-                mode: 'video',
-                src: `https://lh3.googleusercontent.com/d/${driveId}`,
-                drivePreview: `${preview}?autoplay=1`,
-            };
-        }
-        return { mode: 'iframe', src: preview };
+        return {
+            mode: 'iframe',
+            provider: 'drive',
+            src: autoplay ? `${preview}?autoplay=1` : preview,
+            driveId,
+            viewUrl: `https://drive.google.com/file/d/${driveId}/view`
+        };
     }
-    return { mode: 'video', src: raw };
+    return { mode: 'video', provider: 'file', src: raw };
 }
 
 function escapeHtmlAttr(value) {
@@ -177,31 +242,93 @@ function escapeHtmlAttr(value) {
         .replace(/>/g, '&gt;');
 }
 
-/** Markup for PDP / lightbox video (Drive embed or native video). */
-function renderProductVideoHtml(url, className = '', { autoplay = false } = {}) {
+/** YouTube / Shorts lightbox — vertical frame for Shorts. */
+function renderYoutubeLightboxHtml(media, { autoplay = true } = {}) {
+    const id = media?.youtubeId || '';
+    if (!id) return '';
+    const vertical = !!media.vertical;
+    const src = youtubeEmbedSrc(id, { autoplay });
+    const viewUrl = media.viewUrl
+        || (vertical ? `https://www.youtube.com/shorts/${id}` : `https://www.youtube.com/watch?v=${id}`);
+    return `<div class="pdp-video-lightbox${vertical ? ' is-vertical' : ''}">
+        <div class="pdp-video-wrap is-youtube${vertical ? ' is-vertical' : ''} is-lightbox" data-video-loading="1" data-video-url="${escapeHtmlAttr(viewUrl)}">
+            <div class="pdp-video-loading" aria-live="polite">
+                <span class="pdp-video-spinner" aria-hidden="true"></span>
+                <span class="pdp-video-loading-text">Loading video…</span>
+            </div>
+            <iframe
+                class="pdp-video"
+                src="${escapeHtmlAttr(src)}"
+                title="Product video"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowfullscreen
+                loading="eager"
+                referrerpolicy="strict-origin-when-cross-origin"></iframe>
+        </div>
+    </div>`;
+}
+
+/**
+ * Dedicated Drive lightbox player — full 16:9 frame + fallback link.
+ * Do not use lh3 / native <video> for Drive (broken on iOS/Android WebViews).
+ */
+function renderDriveLightboxHtml(driveId, { autoplay = true } = {}) {
+    const id = String(driveId || '').trim();
+    if (!id) return '';
+    const preview = `https://drive.google.com/file/d/${id}/preview${autoplay ? '?autoplay=1' : ''}`;
+    const viewUrl = `https://drive.google.com/file/d/${id}/view`;
+    return `<div class="pdp-video-lightbox">
+        <div class="pdp-video-wrap is-drive is-lightbox" data-video-loading="1" data-video-url="${escapeHtmlAttr(viewUrl)}">
+            <div class="pdp-video-loading" aria-live="polite">
+                <span class="pdp-video-spinner" aria-hidden="true"></span>
+                <span class="pdp-video-loading-text">Loading video…</span>
+            </div>
+            <iframe
+                class="pdp-video"
+                src="${escapeHtmlAttr(preview)}"
+                title="Product video"
+                allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+                allowfullscreen
+                loading="eager"
+                referrerpolicy="no-referrer-when-downgrade"></iframe>
+            <div class="pdp-video-popout-mask" aria-hidden="true"></div>
+        </div>
+        <a class="pdp-video-fallback" href="${escapeHtmlAttr(viewUrl)}" target="_blank" rel="noopener noreferrer"
+            onclick="event.stopPropagation()">Open in Google Drive</a>
+    </div>`;
+}
+
+/** Markup for PDP / lightbox video (YouTube, Drive, or native video). */
+function renderProductVideoHtml(url, className = '', { autoplay = false, lightbox = false } = {}) {
     const media = typeof normalizeProductVideo === 'function'
         ? normalizeProductVideo(url, { autoplay })
         : null;
     if (!media) return '';
+
+    if (media.provider === 'youtube' && media.youtubeId) {
+        return renderYoutubeLightboxHtml(media, { autoplay: true });
+    }
+
+    // Lightbox + Drive → dedicated full-frame player
+    if (lightbox && media.driveId) {
+        return renderDriveLightboxHtml(media.driveId, { autoplay: true });
+    }
+
     const cls = className ? ` class="${escapeHtmlAttr(className)}"` : '';
     let src = media.src;
     if (media.mode === 'iframe' && autoplay && !/[?&]autoplay=/.test(src)) {
         src += (src.includes('?') ? '&' : '?') + 'autoplay=1';
     }
     const srcAttr = escapeHtmlAttr(src);
-    const isDrive = media.mode === 'iframe';
-    const drivePreviewAttr = media.drivePreview
-        ? ` data-drive-preview="${escapeHtmlAttr(media.drivePreview)}"`
-        : '';
+    const isDrive = media.provider === 'drive';
     const originalUrlAttr = ` data-video-url="${escapeHtmlAttr(url)}"`;
-    const player = isDrive
-        ? `<iframe src="${srcAttr}"${cls} title="Product video" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen></iframe>`
-        : `<video src="${srcAttr}"${cls} controls playsinline preload="${autoplay ? 'auto' : 'metadata'}"${autoplay ? ' autoplay' : ''}></video>`;
-    // Drive's pop-out control can't be disabled; cover it so it doesn't open Drive in a new tab.
+    const player = media.mode === 'iframe'
+        ? `<iframe src="${srcAttr}"${cls} title="Product video" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen loading="eager"></iframe>`
+        : `<video src="${srcAttr}"${cls} controls playsinline webkit-playsinline preload="${autoplay ? 'auto' : 'metadata'}"${autoplay ? ' autoplay' : ''}></video>`;
     const popoutMask = isDrive
         ? '<div class="pdp-video-popout-mask" aria-hidden="true"></div>'
         : '';
-    return `<div class="pdp-video-wrap${isDrive ? ' is-drive' : ''}" data-video-loading="1"${drivePreviewAttr}${originalUrlAttr}>
+    return `<div class="pdp-video-wrap${isDrive ? ' is-drive' : ''}" data-video-loading="1"${originalUrlAttr}>
         <div class="pdp-video-loading" aria-live="polite">
             <span class="pdp-video-spinner" aria-hidden="true"></span>
             <span class="pdp-video-loading-text">Loading video…</span>
@@ -226,56 +353,39 @@ function bindPdpVideoLoading(root = document) {
         const player = wrap.querySelector('iframe, video');
         if (player?.tagName === 'IFRAME') {
             player.addEventListener('load', finish, { once: true });
+            setTimeout(finish, 1800);
         } else if (player) {
             if (player.readyState >= 2) finish();
             else {
                 player.addEventListener('loadeddata', finish, { once: true });
+                player.addEventListener('canplay', finish, { once: true });
                 player.addEventListener('error', finish, { once: true });
             }
+            setTimeout(finish, 8000);
         } else {
             finish();
-            return;
         }
-        setTimeout(finish, 12000);
     });
 }
 
 /**
- * Start playback after a video thumb tap (user gesture).
- * Call play() immediately in the tap turn — waiting for loadeddata drops the gesture.
- * If a Drive stream URL fails, swap to the Drive preview iframe.
+ * Start playback for native <video> only (CDN/mp4).
+ * YouTube / Drive use iframe — no play() call.
  */
 function tryStartPdpVideo(root = document) {
     const wrap = root.querySelector?.('.pdp-video-wrap') || null;
+    if (wrap?.classList.contains('is-drive') || wrap?.classList.contains('is-youtube')) return;
     const video = (wrap || root).querySelector?.('video.pdp-video, video');
     if (!video) return;
 
     const playAttempt = video.play();
     if (playAttempt && typeof playAttempt.catch === 'function') {
         playAttempt.catch(() => {
-            const retry = () => {
+            video.addEventListener('canplay', () => {
                 video.play()?.catch?.(() => {});
-            };
-            video.addEventListener('canplay', retry, { once: true });
+            }, { once: true });
         });
     }
-
-    const preview = wrap?.dataset?.drivePreview;
-    if (!preview || !wrap) return;
-    video.addEventListener('error', () => {
-        const cls = video.className || 'pdp-video';
-        wrap.classList.add('is-drive');
-        wrap.dataset.videoLoading = '1';
-        wrap.dataset.bound = '0';
-        wrap.innerHTML = `
-            <div class="pdp-video-loading" aria-live="polite">
-                <span class="pdp-video-spinner" aria-hidden="true"></span>
-                <span class="pdp-video-loading-text">Loading video…</span>
-            </div>
-            <iframe src="${escapeHtmlAttr(preview)}" class="${escapeHtmlAttr(cls)}" title="Product video" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen></iframe>
-            <div class="pdp-video-popout-mask" aria-hidden="true"></div>`;
-        if (typeof bindPdpVideoLoading === 'function') bindPdpVideoLoading(wrap.parentElement || document);
-    }, { once: true });
 }
 
 async function resolveFirstExisting(urls) {

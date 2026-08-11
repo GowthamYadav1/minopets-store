@@ -234,8 +234,21 @@ function openPolicy(key) {
     const heroImg = document.getElementById('policy-hero-img');
     if (!policy || !panel || !bodyEl) return;
 
-    if (typeof closeProductDetail === 'function') closeProductDetail();
-    if (typeof closePdpLightbox === 'function') closePdpLightbox();
+    if (typeof closeProductDetail === 'function') closeProductDetail({ fromHistory: true });
+    if (typeof closePdpLightbox === 'function') closePdpLightbox({ fromHistory: true });
+    if (typeof ModalHistory !== 'undefined') {
+        const replacing = ModalHistory.stack.includes('pdp') || ModalHistory.stack.includes('lightbox');
+        ModalHistory.forget('pdp');
+        ModalHistory.forget('lightbox');
+        if (replacing) {
+            ModalHistory.stack.push('policy');
+            try {
+                history.replaceState({ ...(history.state || {}), minoModal: 'policy' }, '', location.href);
+            } catch (_) { /* ignore */ }
+        } else if (ModalHistory.top() !== 'policy') {
+            ModalHistory.push('policy');
+        }
+    }
 
     if (titleEl) titleEl.textContent = policy.title;
     bodyEl.innerHTML = policy.body;
@@ -256,12 +269,14 @@ function openPolicy(key) {
     panel.classList.add('is-open');
     backdrop?.classList.add('is-open');
     panel.setAttribute('aria-hidden', 'false');
-    document.body.classList.add('policy-open');
+    if (typeof BodyScrollLock !== 'undefined') BodyScrollLock.lock('policy-open');
+    else document.body.classList.add('policy-open');
     panel.scrollTop = 0;
 }
 
-function closePolicy() {
+function closePolicy(opts = {}) {
     const panel = document.getElementById('policy');
+    const wasOpen = panel?.classList.contains('is-open');
     const backdrop = document.getElementById('policy-backdrop');
     const heroEl = document.getElementById('policy-hero');
     const heroImg = document.getElementById('policy-hero-img');
@@ -276,7 +291,11 @@ function closePolicy() {
         heroImg.alt = '';
     }
     backdrop?.classList.remove('is-open');
-    document.body.classList.remove('policy-open');
+    if (typeof BodyScrollLock !== 'undefined') BodyScrollLock.unlock('policy-open');
+    else document.body.classList.remove('policy-open');
+    if (wasOpen && !opts.fromHistory && typeof ModalHistory !== 'undefined') {
+        ModalHistory.dismiss('policy');
+    }
 }
 
 document.addEventListener('keydown', (e) => {

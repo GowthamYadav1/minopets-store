@@ -337,57 +337,121 @@ function setSelectedPackKey(productId, packKey) {
     syncPackCardUI(productId);
 }
 
+function getPackMenuForRoot(root) {
+    if (!root) return null;
+    const pid = root.id?.replace(/^pack-dd-/, '') || '';
+    return root.querySelector('.pack-dd-menu')
+        || document.querySelector(`.pack-dd-menu.pack-menu-portal[data-pack-menu="${pid}"]`);
+}
+
+function restorePackMenu(menu) {
+    if (!menu) return;
+    const pid = menu.getAttribute('data-pack-menu') || '';
+    const root = menu.__packRoot
+        || (pid ? document.getElementById(`pack-dd-${pid}`) : null);
+    menu.__packRoot = null;
+    menu.classList.remove('is-open', 'pack-menu-portal');
+    menu.style.top = '';
+    menu.style.bottom = '';
+    menu.style.left = '';
+    menu.style.width = '';
+    menu.style.display = '';
+    if (root && menu.parentElement !== root) root.appendChild(menu);
+}
+
 function closeAllPackMenus() {
+    document.querySelectorAll('.pack-dd-menu.pack-menu-portal').forEach((menu) => restorePackMenu(menu));
     document.querySelectorAll('.pack-dd.is-open').forEach((el) => {
+        if (el.id === 'fulfillment-dd') return;
         el.classList.remove('is-open', 'pack-dd-up');
         const menu = el.querySelector('.pack-dd-menu');
-        if (menu) {
-            menu.style.top = '';
-            menu.style.bottom = '';
-            menu.style.left = '';
-            menu.style.width = '';
-        }
+        if (menu) restorePackMenu(menu);
         const trigger = el.querySelector('.pack-dd-trigger');
         if (trigger) trigger.setAttribute('aria-expanded', 'false');
     });
     if (typeof restoreFulfillmentMenu === 'function') restoreFulfillmentMenu();
+    document.getElementById('fulfillment-dd')?.classList.remove('is-open');
 }
 
 function positionPackMenu(root) {
     const trigger = root.querySelector('.pack-dd-trigger');
-    const menu = root.querySelector('.pack-dd-menu');
+    const menu = getPackMenuForRoot(root);
     if (!trigger || !menu) return;
+
+    const pid = root.id?.replace(/^pack-dd-/, '') || root.getAttribute('data-product-id') || '';
+    menu.setAttribute('data-pack-menu', pid);
+    menu.__packRoot = root;
+    // Escape overflow-x-hidden ancestors (view-category / body) — same as fulfillment portal
+    menu.classList.add('pack-menu-portal');
+    if (menu.parentElement !== document.body) document.body.appendChild(menu);
+
+    // Show before measuring height so open-up math is accurate
+    menu.classList.add('is-open');
 
     const rect = trigger.getBoundingClientRect();
     const gap = 6;
-    menu.style.left = `${Math.max(8, rect.left)}px`;
-    menu.style.width = `${Math.max(rect.width, 140)}px`;
+    const width = Math.max(rect.width, 140);
+    const vv = window.visualViewport;
+    const viewH = vv?.height || window.innerHeight;
+    const viewW = vv?.width || window.innerWidth;
+    const offsetTop = vv?.offsetTop || 0;
+    const offsetLeft = vv?.offsetLeft || 0;
 
-    // Measure after width is set
-    const menuHeight = Math.min(menu.scrollHeight || 160, window.innerHeight * 0.5);
-    const spaceBelow = window.innerHeight - rect.bottom - gap;
-    const spaceAbove = rect.top - gap;
+    menu.style.left = `${Math.min(Math.max(8, rect.left + offsetLeft), viewW - width - 8 + offsetLeft)}px`;
+    menu.style.width = `${width}px`;
+
+    const menuHeight = Math.min(menu.getBoundingClientRect().height || menu.scrollHeight || 160, viewH * 0.5);
+    const spaceBelow = viewH - (rect.bottom - offsetTop) - gap;
+    const spaceAbove = (rect.top - offsetTop) - gap;
     const openUp = spaceBelow < menuHeight && spaceAbove > spaceBelow;
 
     if (openUp) {
-        menu.style.top = 'auto';
-        menu.style.bottom = `${window.innerHeight - rect.top + gap}px`;
+        const top = Math.max(offsetTop + 8, rect.top + offsetTop - gap - menuHeight);
+        menu.style.bottom = 'auto';
+        menu.style.top = `${top}px`;
         root.classList.add('pack-dd-up');
     } else {
         menu.style.bottom = 'auto';
-        menu.style.top = `${rect.bottom + gap}px`;
+        menu.style.top = `${rect.bottom + offsetTop + gap}px`;
         root.classList.remove('pack-dd-up');
     }
 }
 
+/**
+ * Prefer the clicked card's .pack-dd — never getElementById alone.
+ * Sale items are rendered in home Deals AND category grids (duplicate ids);
+ * getElementById would position against the hidden deals card (top of screen).
+ */
+function packDdRootFromEvent(productId, event) {
+    const fromEvent = event?.currentTarget?.closest?.('.pack-dd')
+        || event?.target?.closest?.('.pack-dd');
+    if (fromEvent) return fromEvent;
+
+    // Visible category/grid cards first; skip ancestors with display:none / .hidden
+    const nodes = document.querySelectorAll(`[id="pack-dd-${productId}"], .pack-dd[data-product-id="${productId}"]`);
+    for (const el of nodes) {
+        if (el.id === 'fulfillment-dd') continue;
+        if (el.offsetParent === null && getComputedStyle(el).position !== 'fixed') continue;
+        const view = el.closest('#view-home, #view-category, #view-search, #pdp');
+        if (view && view.classList.contains('hidden')) continue;
+        return el;
+    }
+    return document.getElementById(`pack-dd-${productId}`);
+}
+
 function togglePackMenu(productId, event) {
-    if (event) event.stopPropagation();
-    const root = document.getElementById(`pack-dd-${productId}`);
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    const root = packDdRootFromEvent(productId, event);
     if (!root) return;
     const willOpen = !root.classList.contains('is-open');
     closeAllPackMenus();
     if (willOpen) {
         root.classList.add('is-open');
+        const trigger = root.querySelector('.pack-dd-trigger');
+        if (trigger) trigger.setAttribute('aria-expanded', 'true');
         positionPackMenu(root);
     }
 }
@@ -400,8 +464,10 @@ window.addEventListener('resize', () => {
     }
     if (open) positionPackMenu(open);
 });
-window.addEventListener('scroll', () => {
-    if (document.querySelector('.pack-dd.is-open') || document.querySelector('.fulfillment-menu-portal.is-open')) {
+window.addEventListener('scroll', (e) => {
+    if (e.target?.closest?.('.pack-dd-menu')) return;
+    if (document.querySelector('.pack-dd.is-open') || document.querySelector('.pack-menu-portal.is-open')
+        || document.querySelector('.fulfillment-menu-portal.is-open')) {
         closeAllPackMenus();
     }
 }, true);
@@ -421,7 +487,7 @@ function renderPackCardBuyRowHtml(product) {
 
     return `
         <div class="buy-row" data-pack-card="${product.id}">
-            <div class="pack-dd" id="pack-dd-${product.id}">
+            <div class="pack-dd" id="pack-dd-${product.id}" data-product-id="${product.id}">
                 <button type="button" class="pack-dd-trigger" aria-haspopup="listbox"
                     onclick="togglePackMenu(${product.id}, event)" aria-label="Choose pack">
                     <span class="pack-dd-label" id="pack-card-label-${product.id}">${typeof renderPackCardLabelHtml === 'function' ? renderPackCardLabelHtml(pack) : `${pack.label} · ₹${pack.price}`}</span>
@@ -527,6 +593,7 @@ function renderPackOptionsHtml(product, available) {
         <p id="pack-hint-${product.id}" class="text-[10px] text-center text-slate-400 mt-1.5">${packsUsePiecePricing(product) ? 'Add any mix of packs · Inclusive of all taxes' : 'Choose an option · Inclusive of all taxes'}</p>`;
 }
 
-document.addEventListener('click', () => {
+document.addEventListener('click', (e) => {
+    if (e.target.closest('.pack-dd, .pack-dd-menu, .fulfillment-dd')) return;
     if (typeof closeAllPackMenus === 'function') closeAllPackMenus();
 });

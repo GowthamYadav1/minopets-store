@@ -300,11 +300,22 @@ function toggleCart() {
         overlay.classList.remove('hidden');
         lockBodyScroll();
         setTimeout(() => panel.classList.remove('translate-x-full'), 10);
+        if (typeof ModalHistory !== 'undefined') ModalHistory.push('cart');
     } else {
-        panel.classList.add('translate-x-full');
-        overlay.classList.add('hidden');
-        unlockBodyScroll();
-        setTimeout(() => panel.classList.add('hidden'), 300);
+        closeCartPanel();
+    }
+}
+
+function closeCartPanel(opts = {}) {
+    const panel = document.getElementById('cart-panel');
+    const overlay = document.getElementById('cart-overlay');
+    if (!panel || panel.classList.contains('hidden')) return;
+    panel.classList.add('translate-x-full');
+    overlay?.classList.add('hidden');
+    unlockBodyScroll();
+    setTimeout(() => panel.classList.add('hidden'), 300);
+    if (!opts.fromHistory && typeof ModalHistory !== 'undefined') {
+        ModalHistory.dismiss('cart');
     }
 }
 

@@ -310,26 +310,16 @@ function renderCategoryCards() {
     const container = document.getElementById('category-cards');
     if (!container) return;
 
-    container.innerHTML = Object.entries(categoryMeta).map(([name, meta]) => {
-        const count = products.filter(p => p.category === name).length;
-        return `
-            <button onclick="navigateTo('${meta.slug}')" class="category-card text-left bg-white rounded-2xl border-2 border-brand-blue/10 overflow-hidden shadow-sm">
-                <div class="aspect-[16/10] overflow-hidden bg-[#F8FAFC]">
-                    <img src="${meta.image}" alt="${name}" class="w-full h-full object-cover" loading="lazy"
-                        onerror="this.src='https://placehold.co/400x250/004B93/FFFFFF?text=${encodeURIComponent(name)}'">
-                </div>
-                <div class="p-4">
-                    <h3 class="font-bold text-brand-blue text-lg">${name}</h3>
-                    <p class="text-sm text-gray-500 mt-1">${meta.description}</p>
-                    <p class="text-xs text-brand-coral font-semibold mt-2">${
-                        (typeof isCatalogPending === 'function' && isCatalogPending())
-                            ? 'Loading…'
-                            : `${count} products · Shop All →`
-                    }</p>
-                </div>
+    container.innerHTML = Object.entries(categoryMeta).map(([name, meta]) => `
+            <button type="button" role="listitem" onclick="navigateTo('${meta.slug}')"
+                class="category-circle" aria-label="Shop ${name}">
+                <span class="category-circle-img">
+                    <img src="${meta.image}" alt="" loading="lazy"
+                        onerror="this.src='https://placehold.co/160x160/004B93/FFFFFF?text=${encodeURIComponent(name)}'">
+                </span>
+                <span class="category-circle-label">${name}</span>
             </button>
-        `;
-    }).join('');
+        `).join('');
 }
 
 function renderDealsRow() {
@@ -643,6 +633,8 @@ function renderSubcategorySections(category, filteredItems) {
 
         const combo = isComboSubcategory(sub);
         const headerClass = combo ? 'combo-section-header' : 'subsection-header';
+        const catSlug = categoryMeta[category].slug;
+        const subSlug = subcategoryToSlug(sub);
 
         return `
             <section class="mb-10 ${combo ? 'combo-section' : ''}">
@@ -650,6 +642,8 @@ function renderSubcategorySections(category, filteredItems) {
                     ${combo ? '<span class="combo-pill">COMBO</span>' : ''}
                     <h3 class="text-lg font-bold ${combo ? 'text-brand-coral' : 'text-brand-blue'}">${sub}</h3>
                     <span class="text-xs text-slate-400 font-medium">${items.length} item${items.length === 1 ? '' : 's'}</span>
+                    <button type="button" onclick="navigateTo('${catSlug}/${subSlug}')"
+                        class="ml-auto text-sm text-brand-coral font-semibold hover:underline flex-shrink-0">View all →</button>
                 </div>
                 <div class="deals-scroll ${combo ? 'combos-scroll' : ''} flex ${combo ? 'items-stretch' : ''} gap-3 sm:gap-4 pb-2">
                     ${items.map((p) => `
@@ -668,13 +662,21 @@ function renderSubcategorySections(category, filteredItems) {
 function openFilterDrawer() {
     document.getElementById('filter-drawer')?.classList.add('open');
     document.getElementById('filter-overlay')?.classList.add('open');
-    document.body.style.overflow = 'hidden';
+    if (typeof BodyScrollLock !== 'undefined') BodyScrollLock.lock('filters-open');
+    else document.body.style.overflow = 'hidden';
+    if (typeof ModalHistory !== 'undefined') ModalHistory.push('filters');
 }
 
-function closeFilterDrawer() {
-    document.getElementById('filter-drawer')?.classList.remove('open');
+function closeFilterDrawer(opts = {}) {
+    const drawer = document.getElementById('filter-drawer');
+    const wasOpen = drawer?.classList.contains('open');
+    drawer?.classList.remove('open');
     document.getElementById('filter-overlay')?.classList.remove('open');
-    document.body.style.overflow = '';
+    if (typeof BodyScrollLock !== 'undefined') BodyScrollLock.unlock('filters-open');
+    else document.body.style.overflow = '';
+    if (wasOpen && !opts.fromHistory && typeof ModalHistory !== 'undefined') {
+        ModalHistory.dismiss('filters');
+    }
 }
 
 function syncMobileFilterPanel() {

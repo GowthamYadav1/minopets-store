@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Mino Pets</title>
+  <script>
+    /* GitHub Pages has no server rewrites. Save the deep link, then open /dev/
+       so the storefront can restore the path (see restoreSpaRedirect in app.js). */
+    (function () {
+      try {
+        sessionStorage.setItem(
+          'mino_spa_redirect',
+          location.pathname + location.search + location.hash
+        );
+      } catch (e) { /* private mode / blocked storage */ }
+      location.replace('/dev/' + location.search + location.hash);
+    })();
+  </script>
+  <meta http-equiv="refresh" content="0; url=/dev/">
+</head>
+<body>
+  <p>Loading <a href="/dev/">Mino Pets</a>…</p>
+</body>
+</html>

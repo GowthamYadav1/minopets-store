@@ -46,10 +46,8 @@ function renderPdpMainMedia({ autoplay = false } = {}) {
     const m = pdpMedia[pdpMediaIndex];
     if (!m) return '<div class="w-full h-full bg-slate-100"></div>';
     if (m.type === 'video') {
-        if (typeof renderProductVideoHtml === 'function') {
-            return renderProductVideoHtml(m.src, 'w-full h-full object-cover pdp-video', { autoplay });
-        }
-        return `<video src="${typeof escapeHtmlAttr === 'function' ? escapeHtmlAttr(m.src) : m.src}" class="w-full h-full object-cover" controls playsinline${autoplay ? ' autoplay' : ''}></video>`;
+        // Stage shows poster; play opens lightbox (YouTube) or Drive on phone-only for Drive links
+        return renderPdpVideoStagePoster();
     }
     const sku = products.find((p) => p.id == pdpOpenId)?.sku || '';
     return `<img src="${m.src}" alt="" class="w-full h-full object-cover cursor-zoom-in"
@@ -58,46 +56,147 @@ function renderPdpMainMedia({ autoplay = false } = {}) {
         onerror="typeof handleProductImgError==='function'?handleProductImgError(this):(this.onerror=null)">`;
 }
 
+/** Phone-only: Drive iframes break (dark bar). YouTube plays in-page on all sizes. */
+function isPhoneVideoViewport() {
+    return typeof window.matchMedia === 'function'
+        && window.matchMedia('(max-width: 767px)').matches;
+}
+
+/** Poster + play CTA in the PDP stage. */
+function renderPdpVideoStagePoster() {
+    const poster = (pdpMedia.find((x) => x.type === 'image') || {}).src || '';
+    const img = poster
+        ? `<img src="${poster}" alt="" class="w-full h-full object-cover" onerror="this.remove()">`
+        : '<div class="w-full h-full bg-slate-800"></div>';
+    const m = pdpMedia[pdpMediaIndex];
+    const isYt = m && typeof youtubeVideoMeta === 'function' && !!youtubeVideoMeta(m.src);
+    const phoneDrive = isPhoneVideoViewport() && !isYt
+        && typeof googleDriveFileId === 'function'
+        && !!googleDriveFileId(m?.src);
+    const label = phoneDrive ? 'Play video' : 'Tap to play';
+    const aria = phoneDrive ? 'Play video in Google Drive' : 'Play video';
+    return `<button type="button" class="pdp-video-stage-btn" onclick="playPdpVideo()" aria-label="${aria}">
+        ${img}
+        <span class="pdp-video-stage-play" aria-hidden="true">▶</span>
+        <span class="pdp-video-stage-label">${label}</span>
+    </button>`;
+}
+
+/**
+ * Entry point for video play from thumb or poster.
+ * YouTube/Shorts → in-page lightbox (all devices, vertical for Shorts).
+ * Phone + Drive only → open Drive viewer.
+ * Else → lightbox.
+ */
+function playPdpVideo() {
+    const m = pdpMedia[pdpMediaIndex];
+    if (!m || m.type !== 'video') return;
+
+    const isYt = typeof youtubeVideoMeta === 'function' && youtubeVideoMeta(m.src);
+    if (isYt) {
+        openPdpLightbox({ autoplay: true });
+        return;
+    }
+
+    const driveId = typeof googleDriveFileId === 'function' ? googleDriveFileId(m.src) : null;
+    if (isPhoneVideoViewport() && driveId) {
+        openDriveVideoOnPhone(driveId);
+        return;
+    }
+
+    openPdpLightbox({ autoplay: true });
+}
+
+/** Open Drive’s own player — only dependable path for Drive videos on phones. */
+function openDriveVideoOnPhone(driveId) {
+    const id = String(driveId || '').trim();
+    if (!id) return;
+    const viewUrl = `https://drive.google.com/file/d/${id}/view`;
+
+    const opened = window.open(viewUrl, '_blank', 'noopener,noreferrer');
+    if (!opened) {
+        window.location.href = viewUrl;
+        return;
+    }
+
+    const box = document.getElementById('lightbox-media');
+    const lb = document.getElementById('lightbox');
+    if (!box || !lb) return;
+    box.innerHTML = `<div class="pdp-video-mobile-sheet" onclick="event.stopPropagation()">
+        <p class="pdp-video-mobile-sheet-title">Playing in Google Drive</p>
+        <p class="pdp-video-mobile-sheet-body">Video opens in a new tab — Drive’s player works reliably on phones. Prefer a YouTube Shorts link in the Sheet for in-page play.</p>
+        <a class="pdp-video-mobile-sheet-btn" href="${typeof escapeHtmlAttr === 'function' ? escapeHtmlAttr(viewUrl) : viewUrl}" target="_blank" rel="noopener noreferrer">Open video again</a>
+        <button type="button" class="pdp-video-mobile-sheet-close" onclick="closePdpLightbox()">Back to product</button>
+    </div>`;
+    lb.classList.add('is-open');
+    if (typeof BodyScrollLock !== 'undefined') BodyScrollLock.lock('lightbox-open');
+    else document.body.classList.add('lightbox-open');
+}
+
 function setPdpMedia(index) {
     if (!pdpMedia.length) return;
     pdpMediaIndex = Math.max(0, Math.min(index, pdpMedia.length - 1));
     const stage = document.getElementById('pdp-stage');
     const isVideo = pdpMedia[pdpMediaIndex]?.type === 'video';
     if (stage) {
-        // autoplay=true when picking the video thumb — uses the tap as the play gesture
         stage.innerHTML = renderPdpMainMedia({ autoplay: isVideo });
-        if (typeof bindPdpVideoLoading === 'function') bindPdpVideoLoading(stage);
-        if (isVideo && typeof tryStartPdpVideo === 'function') tryStartPdpVideo(stage);
     }
     document.querySelectorAll('#pdp-thumbs .thumb').forEach((t, i) => {
         t.classList.toggle('is-active', i === pdpMediaIndex);
     });
+
+    if (isVideo) {
+        playPdpVideo();
+    } else {
+        closePdpLightbox();
+    }
 }
 
-function openPdpLightbox() {
+function openPdpLightbox(opts = {}) {
     const m = pdpMedia[pdpMediaIndex];
     if (!m) return;
     const box = document.getElementById('lightbox-media');
     const lb = document.getElementById('lightbox');
     if (!box || !lb) return;
+
+    // Phones: only divert Drive (not YouTube) to external player
+    if (m.type === 'video' && isPhoneVideoViewport()) {
+        const isYt = typeof youtubeVideoMeta === 'function' && youtubeVideoMeta(m.src);
+        const driveId = typeof googleDriveFileId === 'function' ? googleDriveFileId(m.src) : null;
+        if (!isYt && driveId) {
+            openDriveVideoOnPhone(driveId);
+            return;
+        }
+    }
+
     if (m.type === 'video') {
         if (typeof renderProductVideoHtml === 'function') {
-            box.innerHTML = renderProductVideoHtml(m.src, 'max-w-full pdp-video');
+            box.innerHTML = renderProductVideoHtml(m.src, 'pdp-video', { autoplay: true, lightbox: true });
             if (typeof bindPdpVideoLoading === 'function') bindPdpVideoLoading(box);
+            if (typeof tryStartPdpVideo === 'function') tryStartPdpVideo(box);
         } else {
-            box.innerHTML = `<video src="${m.src}" controls autoplay playsinline class="max-w-full"></video>`;
+            box.innerHTML = `<video src="${m.src}" controls autoplay playsinline webkit-playsinline class="pdp-video" style="width:100%;max-height:88vh"></video>`;
         }
     } else {
         box.innerHTML = `<img src="${m.src}" alt="">`;
     }
     lb.classList.add('is-open');
+    if (typeof BodyScrollLock !== 'undefined') BodyScrollLock.lock('lightbox-open');
+    else document.body.classList.add('lightbox-open');
+    if (typeof ModalHistory !== 'undefined') ModalHistory.push('lightbox');
 }
 
-function closePdpLightbox() {
+function closePdpLightbox(opts = {}) {
     const lb = document.getElementById('lightbox');
     const box = document.getElementById('lightbox-media');
+    const wasOpen = lb?.classList.contains('is-open');
     if (lb) lb.classList.remove('is-open');
     if (box) box.innerHTML = '';
+    if (typeof BodyScrollLock !== 'undefined') BodyScrollLock.unlock('lightbox-open');
+    else document.body.classList.remove('lightbox-open');
+    if (wasOpen && !opts.fromHistory && typeof ModalHistory !== 'undefined') {
+        ModalHistory.dismiss('lightbox');
+    }
 }
 
 async function openProductDetail(productId) {
@@ -194,7 +293,7 @@ async function openProductDetail(productId) {
                 </div>
                 ${pdpMedia.length > 1 ? `
                     <div id="pdp-thumbs" class="flex gap-2 mt-2.5 overflow-x-auto pb-1">${thumbs}</div>
-                    <p class="text-xs text-slate-400 mt-1.5">Tap a thumb to switch · tap main photo to enlarge</p>
+                    <p class="text-xs text-slate-400 mt-1.5">Tap a photo to enlarge · tap video to play</p>
                 ` : ''}
             </div>
             <div class="min-w-0 pdp-info">
@@ -218,10 +317,14 @@ async function openProductDetail(productId) {
     backdrop.classList.add('is-open');
     pdp.setAttribute('aria-hidden', 'false');
     pdp.dataset.pid = String(product.id);
-    document.body.classList.add('pdp-open');
+    if (typeof BodyScrollLock !== 'undefined') BodyScrollLock.lock('pdp-open');
+    else document.body.classList.add('pdp-open');
+    document.querySelector('#pdp .pdp-scroll')?.scrollTo?.(0, 0);
+    document.getElementById('pdp')?.scrollTo?.(0, 0);
 
     if (hasPacks && typeof syncPackCardUI === 'function') syncPackCardUI(product.id);
     if (!hasPacks && typeof syncQtyControls === 'function') syncQtyControls(product.id);
+    if (typeof ModalHistory !== 'undefined') ModalHistory.push('pdp');
 }
 
 /** Called after cart changes — pack rows already synced in place; refresh simple qty in open PDP. */
@@ -233,9 +336,14 @@ function refreshOpenProductDetail(productId) {
     if (qtyEl) qtyEl.textContent = String(AppState.cart[productId] || 0);
 }
 
-function closeProductDetail() {
-    closePdpLightbox();
+function closeProductDetail(opts = {}) {
     const pdp = document.getElementById('pdp');
+    const wasOpen = pdp?.classList.contains('is-open');
+    const lb = document.getElementById('lightbox');
+    const hadLightbox = lb?.classList.contains('is-open');
+
+    closePdpLightbox({ fromHistory: true });
+
     const backdrop = document.getElementById('pdp-backdrop');
     if (pdp) {
         pdp.classList.remove('is-open');
@@ -243,9 +351,16 @@ function closeProductDetail() {
         delete pdp.dataset.pid;
     }
     if (backdrop) backdrop.classList.remove('is-open');
-    document.body.classList.remove('pdp-open');
+    if (typeof BodyScrollLock !== 'undefined') BodyScrollLock.unlock('pdp-open');
+    else document.body.classList.remove('pdp-open');
     pdpOpenId = null;
     if (typeof closeAllPackMenus === 'function') closeAllPackMenus();
+
+    if (!wasOpen || opts.fromHistory || typeof ModalHistory === 'undefined') return;
+    const layers = [];
+    if (hadLightbox) layers.push('lightbox');
+    layers.push('pdp');
+    ModalHistory.dismissMany(layers);
 }
 
 document.addEventListener('keydown', (e) => {

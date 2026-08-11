@@ -241,7 +241,7 @@ const filterDefinitions = {
 const categoryMeta = {
     Fish: {
         slug: 'fish',
-        image: '/assets/Neon-tetra.png',
+        image: '/assets/Flowerhorn.png',
         description: 'Barbs & minnows, bettas, flowerhorn, combos & more'
     },
     Shrimps: {

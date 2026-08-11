@@ -42,25 +42,55 @@
 
     <header class="sticky top-0 z-40 shadow-md">
         <div class="bg-white border-b border-gray-200">
-            <div class="max-w-shell mx-auto px-4 lg:px-8 py-3 flex items-center gap-2 sm:gap-5 min-w-0">
-                <a href="." onclick="navigateTo('home'); return false;" class="flex items-center gap-2 flex-shrink-0">
+            <div class="site-header-bar max-w-shell mx-auto px-4 lg:px-8 py-3 flex items-center gap-2 sm:gap-5 min-w-0">
+                <button type="button" id="mobile-nav-toggle" class="md:hidden flex-shrink-0 w-10 h-10 -ml-1 flex items-center justify-center text-brand-blue rounded-lg hover:bg-slate-100" onclick="toggleMobileNav()" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-nav-drawer">
+                    <svg id="mobile-nav-icon-open" class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" d="M4 7h16M4 12h16M4 17h16"/>
+                    </svg>
+                    <svg id="mobile-nav-icon-close" class="w-6 h-6 hidden" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/>
+                    </svg>
+                </button>
+                <a href="." onclick="navigateTo('home'); return false;" class="site-logo flex items-center gap-2 flex-shrink-0">
                     <img src="/assets/logo.png" alt="Mino Pets" class="h-12 sm:h-16 w-auto object-contain max-h-12 sm:max-h-16" onerror="this.style.display='none'; this.nextElementSibling.style.display='block'">
                     <span class="hidden text-brand-blue font-extrabold text-xl tracking-tight">MINO</span>
                 </a>
-                <div class="flex-1 min-w-0 max-w-xl lg:max-w-2xl mx-auto">
+                <!-- Desktop: always-visible search -->
+                <div class="hidden md:block flex-1 min-w-0 max-w-xl lg:max-w-2xl mx-auto">
                     <div class="relative">
                         <input type="search" id="search-input" placeholder="Search fishes, plants, shrimps…"
                             class="w-full bg-gray-50 border border-gray-200 text-gray-800 placeholder-gray-400 rounded-full pl-5 pr-12 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/30 focus:border-brand-blue transition-shadow">
-                        <button class="absolute right-1 top-1/2 -translate-y-1/2 bg-brand-blue hover:bg-brand-blue-dark text-white rounded-full w-9 h-9 flex items-center justify-center transition-colors" aria-label="Search">
+                        <button type="button" class="absolute right-1 top-1/2 -translate-y-1/2 bg-brand-blue hover:bg-brand-blue-dark text-white rounded-full w-9 h-9 flex items-center justify-center transition-colors" aria-label="Search" onclick="document.getElementById('search-input')?.focus()">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                         </button>
                     </div>
                 </div>
-                <button onclick="toggleCart()" class="flex items-center gap-1.5 text-brand-blue hover:text-brand-coral transition-colors flex-shrink-0 relative">
-                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-                    <span class="hidden lg:inline font-semibold text-sm">Cart</span>
-                    <span id="cart-badge" class="absolute -top-1.5 -right-1.5 bg-brand-coral text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center hidden shadow-sm">0</span>
-                </button>
+                <div class="site-header-actions ml-auto flex items-center gap-1.5 flex-shrink-0">
+                    <!-- Mobile: icon opens search field -->
+                    <button type="button" id="mobile-search-toggle" class="md:hidden flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-brand-blue text-white hover:bg-brand-blue-dark shadow-sm" onclick="toggleMobileSearch()" aria-label="Search" aria-expanded="false" aria-controls="mobile-search-panel">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    </button>
+                    <button onclick="toggleCart()" class="flex items-center gap-1.5 text-brand-blue hover:text-brand-coral transition-colors flex-shrink-0 relative">
+                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                        <span class="hidden lg:inline font-semibold text-sm">Cart</span>
+                        <span id="cart-badge" class="absolute -top-1.5 -right-1.5 bg-brand-coral text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center hidden shadow-sm">0</span>
+                    </button>
+                </div>
+            </div>
+            <!-- Mobile expandable search row -->
+            <div id="mobile-search-panel" class="mobile-search-panel md:hidden" hidden>
+                <div class="max-w-shell mx-auto px-4 pt-3 pb-3 flex items-center gap-2">
+                    <div class="relative flex-1 min-w-0">
+                        <input type="search" id="search-input-mobile" placeholder="Search fishes, plants, shrimps…"
+                            class="w-full bg-gray-50 border border-gray-200 text-gray-800 placeholder-gray-400 rounded-full pl-4 pr-11 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/30 focus:border-brand-blue">
+                        <button type="button" class="absolute right-1 top-1/2 -translate-y-1/2 bg-brand-blue text-white rounded-full w-8 h-8 flex items-center justify-center" aria-label="Search" onclick="document.getElementById('search-input-mobile')?.focus()">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                        </button>
+                    </div>
+                    <button type="button" class="mobile-search-close flex-shrink-0 w-9 h-9 flex items-center justify-center text-brand-blue rounded-lg hover:bg-slate-100" onclick="closeMobileSearch()" aria-label="Close search">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg>
+                    </button>
+                </div>
             </div>
         </div>
         <nav class="bg-brand-blue text-white hidden md:block">
@@ -69,10 +99,13 @@
                 <span class="text-xs text-white/80 py-3 pl-4 whitespace-nowrap hidden lg:block">Free local pickup on orders over ₹999</span>
             </div>
         </nav>
-        <div class="bg-brand-blue md:hidden overflow-x-auto max-w-full">
-            <div class="flex gap-1 px-3 py-2 text-xs font-medium whitespace-nowrap min-w-0" id="mobile-category-nav"></div>
-        </div>
     </header>
+
+    <!-- Mobile nav drawer — sits under sticky header so logo stays visible -->
+    <div id="mobile-nav-backdrop" class="mobile-nav-backdrop" onclick="closeMobileNav()" hidden></div>
+    <aside id="mobile-nav-drawer" class="mobile-nav-drawer" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Shop menu">
+        <div class="mobile-nav-drawer-body" id="mobile-nav-body"></div>
+    </aside>
 
     <div class="bg-emerald-100 border-b border-emerald-200 text-center py-2 px-4 text-sm text-emerald-900 font-medium">
         🎉 Free plant care guide with every live plant order this week!
@@ -83,45 +116,45 @@
         <div class="relative rounded-2xl overflow-hidden shadow-lg bg-white" id="hero-slider">
             <div id="hero-slides" aria-live="polite">
                 <div class="hero-slide is-active" data-index="0">
-                    <div class="hero-slide-inner hero-slide-inner--sky">
-                        <div class="hero-slide-copy">
-                            <span class="hero-badge">New Arrivals</span>
-                            <h2 class="hero-title">Premium Live Aquatics</h2>
-                            <p class="hero-subtitle">Hand-picked ornamental fishes, shrimps &amp; plants delivered fresh to your door.</p>
-                            <a href="fish" onclick="navigateTo('fish'); return false;" class="hero-cta">Shop Collection</a>
-                        </div>
-                        <div class="hero-slide-image hero-slide-image--video">
-                            <video id="hero-video" class="hero-video" muted loop playsinline preload="none"
-                                poster="/assets/goldfish-poster.png" data-src="/assets/Gold-fish-vid.mp4"
-                                aria-label="Goldfish swimming in aquarium"></video>
+                    <div class="hero-slide-inner hero-slide-inner--video">
+                        <a href="fish" onclick="navigateTo('fish'); return false;"
+                            class="hero-slide-copy hero-slide-copy--img"
+                            aria-label="Premium Live Aquatics — Shop Collection">
+                            <picture>
+                                <source media="(max-width: 899px)" srcset="/assets/Slider/slider-1-m.jpg">
+                                <img src="/assets/Slider/slider-1.jpg" alt="Premium Live Aquatics" width="810" height="600" decoding="async">
+                            </picture>
+                        </a>
+                        <div class="hero-slide-media">
+                            <div class="hero-media-frame">
+                                <video id="hero-video" class="hero-video" muted loop playsinline preload="none"
+                                    poster="/assets/goldfish-poster.png" data-src="/assets/Gold-fish-vid.mp4"
+                                    aria-label="Goldfish swimming in aquarium"></video>
+                            </div>
+                            <div class="hero-media-chip">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3c2.5 3 7 5.2 7 10a7 7 0 11-14 0c0-4.8 4.5-7 7-10z"/></svg>
+                                Bringing Life to Your <strong>Aquarium</strong>
+                            </div>
                         </div>
                     </div>
                 </div>
                 <div class="hero-slide" data-index="1">
-                    <div class="hero-slide-inner hero-slide-inner--emerald">
-                        <div class="hero-slide-copy">
-                            <span class="hero-badge">20% Off</span>
-                            <h2 class="hero-title">Planted Tank Essentials</h2>
-                            <p class="hero-subtitle">Build stunning aquascapes with premium substrates, stones &amp; live plants.</p>
-                            <a href="plants" onclick="navigateTo('plants'); return false;" class="hero-cta">Explore Plants</a>
-                        </div>
-                        <div class="hero-slide-image">
-                            <img src="/assets/planted-tank.jpg" alt="Planted Tank Essentials" loading="lazy" decoding="async">
-                        </div>
-                    </div>
+                    <a href="plants" onclick="navigateTo('plants'); return false;"
+                        class="hero-banner-link" aria-label="Planted Tank Essentials — Shop plants">
+                        <picture>
+                            <source media="(max-width: 899px)" srcset="/assets/Slider/slider-2-m.jpg">
+                            <img src="/assets/Slider/slider-2.jpg" alt="Planted Tank Essentials" width="1800" height="600" loading="lazy" decoding="async">
+                        </picture>
+                    </a>
                 </div>
                 <div class="hero-slide" data-index="2">
-                    <div class="hero-slide-inner hero-slide-inner--amber">
-                        <div class="hero-slide-copy">
-                            <span class="hero-badge">Limited Stock</span>
-                            <h2 class="hero-title">Freshwater Shrimp Paradise</h2>
-                            <p class="hero-subtitle">Neocaridina colonies &amp; curated combo packs for your nano planted tanks.</p>
-                            <a href="shrimps" onclick="navigateTo('shrimps'); return false;" class="hero-cta">Shop Shrimps</a>
-                        </div>
-                        <div class="hero-slide-image">
-                            <img src="/assets/Cherry-shrimp.jpg" alt="Freshwater Shrimp Paradise" loading="lazy" decoding="async">
-                        </div>
-                    </div>
+                    <a href="shrimps" onclick="navigateTo('shrimps'); return false;"
+                        class="hero-banner-link" aria-label="Freshwater Shrimp Paradise — Shop shrimps">
+                        <picture>
+                            <source media="(max-width: 899px)" srcset="/assets/Slider/slider-3-m.jpg">
+                            <img src="/assets/Slider/slider-3.jpg" alt="Freshwater Shrimp Paradise" width="1800" height="600" loading="lazy" decoding="async">
+                        </picture>
+                    </a>
                 </div>
             </div>
             <div class="hero-controls">
@@ -142,8 +175,7 @@
     <div id="view-home" class="w-full max-w-shell mx-auto px-4 lg:px-8 py-8 overflow-x-hidden">
         <section class="mb-10">
             <h2 class="text-2xl font-bold text-brand-blue tracking-tight">Shop by Category</h2>
-            <p class="text-gray-500 mt-1 text-sm">Browse fishes, shrimps, plants &amp; aquascape essentials</p>
-            <div id="category-cards" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mt-5"></div>
+            <div id="category-cards" class="category-circles mt-5" role="list"></div>
         </section>
         <section class="mb-10">
             <div class="flex items-end justify-between mb-4">
@@ -219,13 +251,13 @@
 
     <!-- Mobile filter drawer -->
     <div id="filter-overlay" class="fixed inset-0 bg-black/40 z-50 opacity-0 invisible transition-opacity lg:hidden" onclick="closeFilterDrawer()"></div>
-    <div id="filter-drawer" class="fixed bottom-0 left-0 right-0 bg-white rounded-t-2xl z-50 transform translate-y-full transition-transform duration-300 max-h-[80vh] overflow-y-auto lg:hidden">
-        <div class="sticky top-0 bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between">
+    <div id="filter-drawer" class="fixed bottom-0 left-0 right-0 bg-white rounded-t-2xl z-50 transform translate-y-full transition-transform duration-300 max-h-[80vh] flex flex-col overflow-hidden lg:hidden">
+        <div class="flex-shrink-0 bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between">
             <h3 class="font-bold text-brand-blue">Filters</h3>
             <button onclick="closeFilterDrawer()" class="text-gray-400 hover:text-brand-blue text-2xl font-bold w-8 h-8 flex items-center justify-center">&times;</button>
         </div>
-        <div id="filter-drawer-content" class="p-4"></div>
-        <div class="sticky bottom-0 bg-white border-t border-gray-100 p-4">
+        <div id="filter-drawer-content" class="filter-drawer-scroll flex-1 min-h-0 overflow-y-auto p-4"></div>
+        <div class="flex-shrink-0 bg-white border-t border-gray-100 p-4">
             <button onclick="closeFilterDrawer()" class="w-full bg-brand-blue text-white font-bold py-3 rounded-lg">Apply Filters</button>
         </div>
     </div>
@@ -233,12 +265,25 @@
     <footer class="mt-auto">
         <div class="footer-wave-wrap" aria-hidden="true">
             <svg viewBox="0 0 1200 80" preserveAspectRatio="none" class="footer-wave">
+                <!-- SMIL <animate> — CSS d:path() morph is not supported on iOS Safari -->
                 <path class="footer-wave-path footer-wave-path--back"
-                    d="M0,28 Q150,58 300,28 T600,28 T900,28 T1200,28 V80 H0 Z"/>
+                    d="M0,28 Q150,58 300,28 T600,28 T900,28 T1200,28 V80 H0 Z">
+                    <animate attributeName="d" dur="10s" repeatCount="indefinite" calcMode="spline"
+                        keyTimes="0;0.5;1" keySplines="0.42 0 0.58 1;0.42 0 0.58 1"
+                        values="M0,28 Q150,58 300,28 T600,28 T900,28 T1200,28 V80 H0 Z;M0,36 Q150,8 300,36 T600,36 T900,36 T1200,36 V80 H0 Z;M0,28 Q150,58 300,28 T600,28 T900,28 T1200,28 V80 H0 Z"/>
+                </path>
                 <path class="footer-wave-path footer-wave-path--mid"
-                    d="M0,40 Q150,12 300,40 T600,40 T900,40 T1200,40 V80 H0 Z"/>
+                    d="M0,40 Q150,12 300,40 T600,40 T900,40 T1200,40 V80 H0 Z">
+                    <animate attributeName="d" dur="8s" begin="-2.5s" repeatCount="indefinite" calcMode="spline"
+                        keyTimes="0;0.5;1" keySplines="0.42 0 0.58 1;0.42 0 0.58 1"
+                        values="M0,40 Q150,12 300,40 T600,40 T900,40 T1200,40 V80 H0 Z;M0,32 Q150,58 300,32 T600,32 T900,32 T1200,32 V80 H0 Z;M0,40 Q150,12 300,40 T600,40 T900,40 T1200,40 V80 H0 Z"/>
+                </path>
                 <path class="footer-wave-path footer-wave-path--front"
-                    d="M0,48 Q150,72 300,48 T600,48 T900,48 T1200,48 V80 H0 Z"/>
+                    d="M0,48 Q150,72 300,48 T600,48 T900,48 T1200,48 V80 H0 Z">
+                    <animate attributeName="d" dur="7s" begin="-1s" repeatCount="indefinite" calcMode="spline"
+                        keyTimes="0;0.5;1" keySplines="0.42 0 0.58 1;0.42 0 0.58 1"
+                        values="M0,48 Q150,72 300,48 T600,48 T900,48 T1200,48 V80 H0 Z;M0,56 Q150,30 300,56 T600,56 T900,56 T1200,56 V80 H0 Z;M0,48 Q150,72 300,48 T600,48 T900,48 T1200,48 V80 H0 Z"/>
+                </path>
             </svg>
         </div>
         <div class="bg-brand-blue text-white overflow-x-hidden">
@@ -503,10 +548,12 @@
     <!-- Product detail modal (Option 4) -->
     <div id="pdp-backdrop" class="pdp-backdrop" onclick="closeProductDetail()"></div>
     <div id="pdp" class="pdp" aria-hidden="true">
-        <div class="sticky top-0 z-10 bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3">
+        <div class="pdp-topbar">
             <button type="button" onclick="closeProductDetail()" class="text-brand-blue font-semibold text-sm">← Back</button>
         </div>
-        <div class="p-4 sm:p-5" id="pdp-body"></div>
+        <div class="pdp-scroll">
+            <div class="p-4 sm:p-5" id="pdp-body"></div>
+        </div>
     </div>
     <div id="lightbox" class="lightbox" onclick="closePdpLightbox()">
         <button type="button" class="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/90 text-brand-blue font-bold text-xl" aria-label="Close" onclick="event.stopPropagation(); closePdpLightbox()">×</button>
@@ -540,6 +587,7 @@
     <script src="js/catalog-load.js"></script>
     <script src="js/hero.js"></script>
     <script src="js/cart.js"></script>
+    <script src="js/modal-history.js"></script>
     <script src="js/checkout.js"></script>
     <script src="js/nav.js"></script>
     <script src="js/catalog.js"></script>

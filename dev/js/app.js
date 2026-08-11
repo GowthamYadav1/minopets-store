@@ -65,10 +65,33 @@ function migrateLegacyHash() {
     return true;
 }
 
+/** GitHub Pages: 404.html stashes the deep link, then sends us to /dev/. Restore it. */
+function restoreSpaRedirect() {
+    try {
+        const path = sessionStorage.getItem('mino_spa_redirect');
+        if (!path) return false;
+        sessionStorage.removeItem('mino_spa_redirect');
+        const cur = location.pathname + location.search + location.hash;
+        if (path !== cur) {
+            history.replaceState(null, '', path);
+            return true;
+        }
+    } catch (_) {
+        /* ignore */
+    }
+    return false;
+}
+
+restoreSpaRedirect();
+
 function navigateTo(path) {
+    if (typeof ModalHistory !== 'undefined') ModalHistory.closeAllSilent();
     AppState.search = '';
-    const searchInput = document.getElementById('search-input');
-    if (searchInput) searchInput.value = '';
+    ['search-input', 'search-input-mobile'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    if (typeof closeMobileSearch === 'function') closeMobileSearch();
 
     const routePath = normalizeRoutePath(path);
     const url = pathToUrl(routePath);
@@ -128,14 +151,15 @@ function renderCurrentView() {
     if (isSearch) renderSearchPage();
 }
 
-async function bootStore() {
-    if (typeof categories !== 'undefined') buildCategoryNav();
-    initHeroSlider();
-    initScrollTop();
-
-    document.getElementById('search-input')?.addEventListener('input', (e) => {
+function bindSearchInput(el) {
+    if (!el || el.dataset.searchBound) return;
+    el.dataset.searchBound = '1';
+    el.addEventListener('input', (e) => {
         const q = e.target.value.trim().toLowerCase();
         AppState.search = q;
+        const otherId = el.id === 'search-input' ? 'search-input-mobile' : 'search-input';
+        const other = document.getElementById(otherId);
+        if (other && other.value !== e.target.value) other.value = e.target.value;
         if (q) {
             AppState.route = { view: 'search', category: null, subcategory: null };
             renderCurrentView();
@@ -143,11 +167,61 @@ async function bootStore() {
             handleRouteChange();
         }
     });
+}
+
+function openMobileSearch() {
+    const panel = document.getElementById('mobile-search-panel');
+    const toggle = document.getElementById('mobile-search-toggle');
+    if (!panel) return;
+    panel.hidden = false;
+    panel.classList.add('is-open');
+    toggle?.classList.add('is-active');
+    toggle?.setAttribute('aria-expanded', 'true');
+    syncMobileNavHeaderOffset?.();
+    const input = document.getElementById('search-input-mobile');
+    const desktop = document.getElementById('search-input');
+    if (input && desktop && !input.value && desktop.value) input.value = desktop.value;
+    setTimeout(() => input?.focus(), 30);
+}
+
+function closeMobileSearch() {
+    const panel = document.getElementById('mobile-search-panel');
+    const toggle = document.getElementById('mobile-search-toggle');
+    panel?.classList.remove('is-open');
+    if (panel) panel.hidden = true;
+    toggle?.classList.remove('is-active');
+    toggle?.setAttribute('aria-expanded', 'false');
+    syncMobileNavHeaderOffset?.();
+}
+
+function toggleMobileSearch() {
+    const panel = document.getElementById('mobile-search-panel');
+    if (panel?.classList.contains('is-open')) closeMobileSearch();
+    else openMobileSearch();
+}
+
+async function bootStore() {
+    if (typeof categories !== 'undefined') buildCategoryNav();
+    initHeroSlider();
+    initScrollTop();
+
+    bindSearchInput(document.getElementById('search-input'));
+    bindSearchInput(document.getElementById('search-input-mobile'));
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeMobileSearch();
+    });
 
     window.addEventListener('popstate', () => {
+        if (typeof ModalHistory !== 'undefined' && ModalHistory.handlePopState()) {
+            return;
+        }
         AppState.search = '';
-        const searchInput = document.getElementById('search-input');
-        if (searchInput) searchInput.value = '';
+        ['search-input', 'search-input-mobile'].forEach((id) => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+        closeMobileSearch();
         handleRouteChange();
     });
 
