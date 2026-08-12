@@ -44,10 +44,6 @@
             0% { transform: translateY(0) scale(1); opacity: 0.6; }
             100% { transform: translateY(-100vh) scale(1.4); opacity: 0; }
         }
-        @keyframes wave {
-            0%, 100% { d: path("M0,40 Q150,80 300,40 T600,40 T900,40 T1200,40 V120 H0 Z"); }
-            50% { d: path("M0,50 Q150,10 300,50 T600,50 T900,50 T1200,50 V120 H0 Z"); }
-        }
         @keyframes blink {
             0%, 100% { opacity: 1; }
             50% { opacity: 0; }
@@ -56,7 +52,7 @@
         .fish-swim { animation: swim 22s linear infinite; }
         .bubble { animation: bubble-rise linear infinite; }
         .cursor-blink { animation: blink 1s step-end infinite; }
-        .wave-path { animation: wave 6s ease-in-out infinite; }
+        /* Wave motion: SMIL in SVG (CSS d:path morph breaks on iOS Safari) */
     </style>
 </head>
 <body class="bg-[#F8FAFC] font-sans min-h-screen overflow-hidden antialiased relative">
@@ -123,8 +119,16 @@
     <!-- Bottom wave -->
     <div class="fixed bottom-0 left-0 right-0 z-0 pointer-events-none">
         <svg viewBox="0 0 1200 120" preserveAspectRatio="none" class="w-full h-24 sm:h-32">
-            <path class="wave-path fill-brand-blue/10" d="M0,40 Q150,80 300,40 T600,40 T900,40 T1200,40 V120 H0 Z"/>
-            <path class="fill-brand-blue/20" d="M0,60 Q150,20 300,60 T600,60 T900,60 T1200,60 V120 H0 Z"/>
+            <path class="fill-brand-blue/10" d="M0,40 Q150,80 300,40 T600,40 T900,40 T1200,40 V120 H0 Z">
+                <animate attributeName="d" dur="6s" repeatCount="indefinite" calcMode="spline"
+                    keyTimes="0;0.5;1" keySplines="0.42 0 0.58 1;0.42 0 0.58 1"
+                    values="M0,40 Q150,80 300,40 T600,40 T900,40 T1200,40 V120 H0 Z;M0,50 Q150,10 300,50 T600,50 T900,50 T1200,50 V120 H0 Z;M0,40 Q150,80 300,40 T600,40 T900,40 T1200,40 V120 H0 Z"/>
+            </path>
+            <path class="fill-brand-blue/20" d="M0,60 Q150,20 300,60 T600,60 T900,60 T1200,60 V120 H0 Z">
+                <animate attributeName="d" dur="8s" begin="-2s" repeatCount="indefinite" calcMode="spline"
+                    keyTimes="0;0.5;1" keySplines="0.42 0 0.58 1;0.42 0 0.58 1"
+                    values="M0,60 Q150,20 300,60 T600,60 T900,60 T1200,60 V120 H0 Z;M0,50 Q150,90 300,50 T600,50 T900,50 T1200,50 V120 H0 Z;M0,60 Q150,20 300,60 T600,60 T900,60 T1200,60 V120 H0 Z"/>
+            </path>
         </svg>
     </div>
 

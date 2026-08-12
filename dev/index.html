@@ -493,17 +493,17 @@
             <p id="success-discount-wrap" class="hidden text-sm text-emerald-700">Coupon saved you ₹<span id="success-order-discount"></span>/-</p>
             <p class="text-xs text-gray-500">Hold expires: <span id="success-order-until"></span></p>
 
-            <div id="pay-phonepe-block" class="hidden space-y-2">
-                <button type="button" id="phonepe-pay-btn" onclick="startPhonePePayment()"
+            <div id="pay-razorpay-block" class="hidden space-y-2">
+                <button type="button" id="razorpay-pay-btn" onclick="startRazorpayPayment()"
                     class="w-full bg-brand-blue hover:bg-brand-blue-dark active:scale-[0.98] text-white font-bold py-3.5 px-4 rounded-lg shadow-md transition-all duration-200">
-                    Pay with PhonePe
+                    Pay now
                 </button>
-                <button type="button" id="phonepe-check-btn" onclick="confirmPhonePePayment()"
+                <button type="button" id="razorpay-check-btn" onclick="confirmRazorpayPayment()"
                     class="hidden w-full border-2 border-brand-blue text-brand-blue hover:bg-brand-blue/5 font-bold py-2.5 px-4 rounded-lg text-sm transition-colors">
                     Check payment status
                 </button>
-                <p id="phonepe-status-msg" class="hidden text-sm text-emerald-700 font-medium"></p>
-                <p id="phonepe-status-err" class="hidden text-sm text-red-600 font-medium"></p>
+                <p id="razorpay-status-msg" class="hidden text-sm text-emerald-700 font-medium"></p>
+                <p id="razorpay-status-err" class="hidden text-sm text-red-600 font-medium"></p>
             </div>
 
             <details id="pay-upi-details" class="rounded-xl border border-brand-blue/15 bg-slate-50 open:pb-0">

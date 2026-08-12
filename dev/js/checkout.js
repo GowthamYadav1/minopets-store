@@ -440,7 +440,11 @@ async function placeOrder() {
             return;
         }
 
-        lastPlacedOrder = data;
+        lastPlacedOrder = {
+            ...data,
+            customer_name: name,
+            customer_phone: phone
+        };
         if (data.stock && AppState) {
             AppState.stock = data.stock;
             AppState.stockLoadedAt = Date.now();
@@ -534,71 +538,88 @@ function showCheckoutSuccess(data) {
         qrEl.removeAttribute('src');
     }
 
-    const phonePeOn = !!(pay.phonepe_enabled || AppState?.storeConfig?.phonepe_enabled);
-    configurePayUiMode(phonePeOn);
+    const razorpayOn = !!(pay.razorpay_enabled || AppState?.storeConfig?.razorpay_enabled);
+    configurePayUiMode(razorpayOn);
 
     document.getElementById('pay-report-msg')?.classList.add('hidden');
     document.getElementById('pay-report-err')?.classList.add('hidden');
-    document.getElementById('phonepe-status-msg')?.classList.add('hidden');
-    document.getElementById('phonepe-status-err')?.classList.add('hidden');
+    document.getElementById('razorpay-status-msg')?.classList.add('hidden');
+    document.getElementById('razorpay-status-err')?.classList.add('hidden');
     const reportBtn = document.getElementById('report-paid-btn');
     if (reportBtn) {
         reportBtn.disabled = false;
         reportBtn.textContent = 'I have paid';
         reportBtn.classList.remove('opacity-60', 'cursor-not-allowed', 'hidden');
     }
-    const ppBtn = document.getElementById('phonepe-pay-btn');
-    if (ppBtn) {
-        ppBtn.disabled = false;
-        ppBtn.textContent = 'Pay with PhonePe';
+    const rzpBtn = document.getElementById('razorpay-pay-btn');
+    if (rzpBtn) {
+        rzpBtn.disabled = false;
+        rzpBtn.textContent = 'Pay now';
     }
 }
 
-/** PhonePe primary + UPI fallback, or UPI-only. */
-function configurePayUiMode(phonePeOn) {
-    const ppBlock = document.getElementById('pay-phonepe-block');
+/** Razorpay primary + UPI fallback, or UPI-only. */
+function configurePayUiMode(razorpayOn) {
+    const rzpBlock = document.getElementById('pay-razorpay-block');
     const details = document.getElementById('pay-upi-details');
     const summary = document.getElementById('pay-upi-summary');
-    const checkBtn = document.getElementById('phonepe-check-btn');
+    const checkBtn = document.getElementById('razorpay-check-btn');
     const reportBtn = document.getElementById('report-paid-btn');
 
     details?.classList.remove('hidden');
     reportBtn?.classList.remove('hidden');
 
-    if (phonePeOn) {
-        ppBlock?.classList.remove('hidden');
+    if (razorpayOn) {
+        rzpBlock?.classList.remove('hidden');
         summary?.classList.remove('hidden');
         if (details) details.open = false;
         checkBtn?.classList.add('hidden');
     } else {
-        ppBlock?.classList.add('hidden');
+        rzpBlock?.classList.add('hidden');
         summary?.classList.add('hidden');
         if (details) details.open = true;
         checkBtn?.classList.add('hidden');
     }
 }
 
-function phonePeReturnUrl(orderId) {
-    const u = new URL(window.location.href);
-    u.searchParams.set('phonepe_order', orderId);
-    // Drop other pay noise
-    u.searchParams.delete('phonepe_state');
-    return u.toString();
+let razorpayScriptPromise = null;
+
+function loadRazorpayScript() {
+    if (window.Razorpay) return Promise.resolve();
+    if (razorpayScriptPromise) return razorpayScriptPromise;
+    razorpayScriptPromise = new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'https://checkout.razorpay.com/v1/checkout.js';
+        s.async = true;
+        s.onload = () => resolve();
+        s.onerror = () => {
+            razorpayScriptPromise = null;
+            reject(new Error('razorpay_script_failed'));
+        };
+        document.head.appendChild(s);
+    });
+    return razorpayScriptPromise;
 }
 
-function clearPhonePeQuery() {
-    const u = new URL(window.location.href);
-    if (!u.searchParams.has('phonepe_order')) return;
-    u.searchParams.delete('phonepe_order');
-    u.searchParams.delete('phonepe_state');
-    window.history.replaceState({}, '', u.pathname + u.search + u.hash);
+function razorpayPrefill() {
+    const name =
+        lastPlacedOrder?.customer_name ||
+        document.getElementById('customer-name')?.value.trim() ||
+        '';
+    const raw =
+        lastPlacedOrder?.customer_phone ||
+        document.getElementById('customer-phone')?.value.trim() ||
+        '';
+    const digits = String(raw).replace(/\D/g, '');
+    const contact = digits.length >= 10 ? digits.slice(-10) : digits;
+    return { name, contact };
 }
 
-async function startPhonePePayment() {
+async function startRazorpayPayment() {
     if (!lastPlacedOrder?.order_id) return;
-    const errEl = document.getElementById('phonepe-status-err');
-    const msgEl = document.getElementById('phonepe-status-msg');
-    const btn = document.getElementById('phonepe-pay-btn');
+    const errEl = document.getElementById('razorpay-status-err');
+    const msgEl = document.getElementById('razorpay-status-msg');
+    const btn = document.getElementById('razorpay-pay-btn');
     errEl?.classList.add('hidden');
     msgEl?.classList.add('hidden');
 
@@ -612,10 +633,11 @@ async function startPhonePePayment() {
 
     if (btn) {
         btn.disabled = true;
-        btn.textContent = 'Opening PhonePe…';
+        btn.textContent = 'Opening checkout…';
     }
 
     try {
+        await loadRazorpayScript();
         const res = await fetch(MINO_API.baseUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -623,55 +645,88 @@ async function startPhonePePayment() {
             body: JSON.stringify({
                 token: MINO_API.token,
                 origin: minoStoreOrigin(),
-                action: 'createPhonePePayment',
-                order_id: lastPlacedOrder.order_id,
-                redirect_url: phonePeReturnUrl(lastPlacedOrder.order_id)
+                action: 'createRazorpayOrder',
+                order_id: lastPlacedOrder.order_id
             })
         });
         const data = await res.json();
-        if (data.already && data.status === 'paid') {
-            showPhonePePaid(data);
+        if (data.already && (data.paid || data.status === 'paid')) {
+            showPaymentConfirmed(data);
             return;
         }
-        if (!data.ok || !data.redirect_url) {
-            throw new Error(data.error || 'phonepe_pay_failed');
+        if (!data.ok || !data.razorpay_order_id || !data.key_id) {
+            throw new Error(data.error || 'razorpay_order_failed');
         }
-        if (data.merchant_order_id && lastPlacedOrder) {
-            lastPlacedOrder.phonepe_moid = data.merchant_order_id;
+
+        lastPlacedOrder.razorpay_order_id = data.razorpay_order_id;
+        const prefill = razorpayPrefill();
+        const rzp = new window.Razorpay({
+            key: data.key_id,
+            amount: data.amount_paisa,
+            currency: data.currency || 'INR',
+            name: 'Mino Pets',
+            description: lastPlacedOrder.order_id,
+            order_id: data.razorpay_order_id,
+            prefill,
+            notes: { mino_order_id: lastPlacedOrder.order_id },
+            theme: { color: '#004B93' },
+            handler(response) {
+                confirmRazorpayPayment({
+                    order_id: lastPlacedOrder.order_id,
+                    razorpay_order_id: response.razorpay_order_id,
+                    razorpay_payment_id: response.razorpay_payment_id,
+                    razorpay_signature: response.razorpay_signature
+                });
+            },
+            modal: {
+                ondismiss() {
+                    document.getElementById('razorpay-check-btn')?.classList.remove('hidden');
+                    const details = document.getElementById('pay-upi-details');
+                    if (details) details.open = true;
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.textContent = 'Pay now';
+                    }
+                }
+            }
+        });
+        rzp.on('payment.failed', (resp) => {
+            const desc = resp?.error?.description || 'Payment failed.';
+            if (errEl) {
+                errEl.textContent = `${desc} Try again, or pay via UPI.`;
+                errEl.classList.remove('hidden');
+            }
+            document.getElementById('razorpay-check-btn')?.classList.remove('hidden');
+            const details = document.getElementById('pay-upi-details');
+            if (details) details.open = true;
+        });
+        rzp.open();
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'Pay now';
         }
-        sessionStorage.setItem(
-            'mino_phonepe_pending',
-            JSON.stringify({
-                order_id: lastPlacedOrder.order_id,
-                total: lastPlacedOrder.total,
-                pay: lastPlacedOrder.pay,
-                merchant_order_id: data.merchant_order_id || '',
-                reserved_until: lastPlacedOrder.reserved_until
-            })
-        );
-        window.location.href = data.redirect_url;
     } catch (err) {
-        console.error('[checkout] createPhonePePayment failed', err);
+        console.error('[checkout] createRazorpayOrder failed', err);
         if (errEl) {
-            errEl.textContent = 'Could not start PhonePe. Use UPI below, or try again.';
+            errEl.textContent = 'Could not start Razorpay. Use UPI below, or try again.';
             errEl.classList.remove('hidden');
         }
         if (btn) {
             btn.disabled = false;
-            btn.textContent = 'Pay with PhonePe';
+            btn.textContent = 'Pay now';
         }
         const details = document.getElementById('pay-upi-details');
         if (details) details.open = true;
     }
 }
 
-async function confirmPhonePePayment(opts = {}) {
+async function confirmRazorpayPayment(opts = {}) {
     const orderId = opts.order_id || lastPlacedOrder?.order_id;
     if (!orderId) return { ok: false };
 
-    const errEl = document.getElementById('phonepe-status-err');
-    const msgEl = document.getElementById('phonepe-status-msg');
-    const checkBtn = document.getElementById('phonepe-check-btn');
+    const errEl = document.getElementById('razorpay-status-err');
+    const msgEl = document.getElementById('razorpay-status-msg');
+    const checkBtn = document.getElementById('razorpay-check-btn');
     errEl?.classList.add('hidden');
 
     if (!MINO_API?.baseUrl || String(MINO_API.baseUrl).includes('PASTE_')) {
@@ -679,7 +734,7 @@ async function confirmPhonePePayment(opts = {}) {
     }
 
     if (msgEl) {
-        msgEl.textContent = 'Confirming payment with PhonePe…';
+        msgEl.textContent = 'Confirming payment…';
         msgEl.classList.remove('hidden');
     }
     if (checkBtn) {
@@ -691,12 +746,13 @@ async function confirmPhonePePayment(opts = {}) {
         const body = {
             token: MINO_API.token,
             origin: minoStoreOrigin(),
-            action: 'confirmPhonePePayment',
+            action: 'confirmRazorpayPayment',
             order_id: orderId
         };
-        if (opts.merchant_order_id || lastPlacedOrder?.phonepe_moid) {
-            body.merchant_order_id = opts.merchant_order_id || lastPlacedOrder.phonepe_moid;
-        }
+        const rzpOrder = opts.razorpay_order_id || lastPlacedOrder?.razorpay_order_id;
+        if (rzpOrder) body.razorpay_order_id = rzpOrder;
+        if (opts.razorpay_payment_id) body.razorpay_payment_id = opts.razorpay_payment_id;
+        if (opts.razorpay_signature) body.razorpay_signature = opts.razorpay_signature;
 
         const res = await fetch(MINO_API.baseUrl, {
             method: 'POST',
@@ -712,23 +768,23 @@ async function confirmPhonePePayment(opts = {}) {
         }
         if (data.ok && !data.paid) {
             if (msgEl) {
-                msgEl.textContent = `Payment not completed yet (${data.phonepe_state || 'PENDING'}). Tap Check status after paying, or use UPI.`;
+                msgEl.textContent = `Payment not completed yet (${data.razorpay_state || 'pending'}). Tap Check status after paying, or use UPI.`;
                 msgEl.classList.remove('hidden');
             }
-            document.getElementById('phonepe-check-btn')?.classList.remove('hidden');
+            document.getElementById('razorpay-check-btn')?.classList.remove('hidden');
             const details = document.getElementById('pay-upi-details');
             if (details) details.open = true;
             return data;
         }
         throw new Error(data.error || 'confirm_failed');
     } catch (err) {
-        console.error('[checkout] confirmPhonePePayment failed', err);
+        console.error('[checkout] confirmRazorpayPayment failed', err);
         if (errEl) {
             errEl.textContent = 'Could not confirm payment yet. Tap Check status, or pay via UPI.';
             errEl.classList.remove('hidden');
         }
         msgEl?.classList.add('hidden');
-        document.getElementById('phonepe-check-btn')?.classList.remove('hidden');
+        document.getElementById('razorpay-check-btn')?.classList.remove('hidden');
         return { ok: false };
     } finally {
         if (checkBtn) {
@@ -739,19 +795,17 @@ async function confirmPhonePePayment(opts = {}) {
 }
 
 function showPaymentConfirmed(data) {
-    clearPhonePeQuery();
-    sessionStorage.removeItem('mino_phonepe_pending');
     if (lastPlacedOrder) lastPlacedOrder.status = 'paid';
 
-    const msgEl = document.getElementById('phonepe-status-msg');
-    const errEl = document.getElementById('phonepe-status-err');
+    const msgEl = document.getElementById('razorpay-status-msg');
+    const errEl = document.getElementById('razorpay-status-err');
     const reportMsg = document.getElementById('pay-report-msg');
     errEl?.classList.add('hidden');
 
     const thanks = data.already
         ? 'Payment already confirmed — thank you!'
         : 'Payment confirmed — order is paid. We’ll prepare your fish.';
-    if (msgEl && !document.getElementById('pay-phonepe-block')?.classList.contains('hidden')) {
+    if (msgEl && !document.getElementById('pay-razorpay-block')?.classList.contains('hidden')) {
         msgEl.textContent = thanks;
         msgEl.classList.remove('hidden');
     }
@@ -760,8 +814,8 @@ function showPaymentConfirmed(data) {
         reportMsg.classList.remove('hidden');
     }
 
-    document.getElementById('phonepe-pay-btn')?.classList.add('hidden');
-    document.getElementById('phonepe-check-btn')?.classList.add('hidden');
+    document.getElementById('razorpay-pay-btn')?.classList.add('hidden');
+    document.getElementById('razorpay-check-btn')?.classList.add('hidden');
     document.getElementById('report-paid-btn')?.classList.add('hidden');
     document.getElementById('pay-upi-details')?.classList.add('hidden');
 
@@ -770,63 +824,6 @@ function showPaymentConfirmed(data) {
         AppState.stockLoadedAt = Date.now();
         if (typeof applyStockToProducts === 'function') applyStockToProducts();
         if (typeof persistStockCache === 'function') persistStockCache();
-    }
-}
-
-/** @deprecated use showPaymentConfirmed */
-function showPhonePePaid(data) {
-    showPaymentConfirmed(data);
-}
-
-/**
- * After PhonePe redirect: ?phonepe_order=MINO-…
- * Restores checkout success UI and confirms payment with Apps Script.
- */
-async function handlePhonePeReturn() {
-    const params = new URLSearchParams(window.location.search);
-    const orderId = params.get('phonepe_order');
-    if (!orderId) return;
-
-    let pending = null;
-    try {
-        pending = JSON.parse(sessionStorage.getItem('mino_phonepe_pending') || 'null');
-    } catch {
-        pending = null;
-    }
-
-    lastPlacedOrder = {
-        order_id: orderId,
-        total: pending?.total,
-        pay: {
-            ...(pending?.pay || {}),
-            phonepe_enabled: true
-        },
-        status: 'pending_payment',
-        reserved_until: pending?.reserved_until,
-        phonepe_moid: pending?.merchant_order_id || ''
-    };
-
-    if (typeof toggleCart === 'function') {
-        const drawer = document.getElementById('cart-drawer');
-        const open = drawer && !drawer.classList.contains('translate-x-full');
-        if (!open) toggleCart();
-    }
-
-    showCheckoutSuccess({
-        order_id: orderId,
-        total: lastPlacedOrder.total,
-        reserved_until: lastPlacedOrder.reserved_until,
-        pay: lastPlacedOrder.pay,
-        discount: 0
-    });
-
-    document.getElementById('phonepe-check-btn')?.classList.remove('hidden');
-
-    // PhonePe can lag a second after redirect
-    let result = await confirmPhonePePayment({ order_id: orderId, merchant_order_id: lastPlacedOrder.phonepe_moid });
-    if (result?.ok && !result.paid && result.phonepe_state === 'PENDING') {
-        await new Promise((r) => setTimeout(r, 2000));
-        result = await confirmPhonePePayment({ order_id: orderId, merchant_order_id: lastPlacedOrder.phonepe_moid });
     }
 }
 
@@ -971,9 +968,7 @@ async function lookupCustomerIfPossible() {
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         initCheckoutFormValidation();
-        handlePhonePeReturn();
     });
 } else {
     initCheckoutFormValidation();
-    handlePhonePeReturn();
 }
