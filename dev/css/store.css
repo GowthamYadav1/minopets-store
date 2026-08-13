@@ -523,6 +523,12 @@
     }
 }
 
+/* Desktop category dropdowns (Tailwind `hidden` = display:none — override on hover/focus) */
+.nav-dropdown:hover .nav-dropdown-menu,
+.nav-dropdown:focus-within .nav-dropdown-menu {
+    display: block;
+}
+
 /* Mobile search: icon → expandable field */
 .mobile-search-panel {
     display: none;
@@ -578,36 +584,206 @@ body.mobile-nav-open header.sticky {
     visibility: visible;
     pointer-events: auto;
 }
+
+/* Side menu above PDP when both are open */
+body.pdp-open.mobile-nav-open header.sticky {
+    z-index: 82;
+}
+body.pdp-open .mobile-nav-backdrop {
+    z-index: 80;
+}
+body.pdp-open .mobile-nav-drawer {
+    z-index: 81;
+}
 .mobile-nav-drawer-body {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
     background: #fff;
+}
+.mobile-nav-panel {
+    min-height: 100%;
+    background: #f4f8fc;
+    padding-bottom: 1.25rem;
 }
 .mobile-nav-back {
     display: flex;
     align-items: center;
     gap: 0.4rem;
     width: 100%;
-    padding: 0.9rem 1rem;
-    font-size: 0.875rem;
+    padding: 0.85rem 1.1rem;
+    font-size: 0.9rem;
     font-weight: 600;
     color: #004B93;
-    background: #f8fafc;
+    background: transparent;
     border: 0;
-    border-bottom: 1px solid #e2e8f0;
     cursor: pointer;
     text-align: left;
 }
+.mobile-nav-cat-hero {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    padding: 0.35rem 1.1rem 1.15rem;
+}
+.mobile-nav-cat-hero-icon-wrap {
+    flex-shrink: 0;
+    width: 4.5rem;
+    height: 4.5rem;
+    border-radius: 9999px;
+    background: #e8f1fb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+.mobile-nav-cat-hero-icon-wrap--sheet {
+    background: transparent;
+    overflow: visible;
+}
+.mobile-nav-cat-hero-icon-wrap--sheet .mobile-nav-hero-icon,
+.mobile-nav-cat-hero-icon-wrap--sheet .mobile-nav-item-icon {
+    width: 4.5rem;
+    height: 4.5rem;
+}
+.mobile-nav-hero-icon,
+.mobile-nav-cat-hero-icon-wrap .mobile-nav-item-icon {
+    width: 3.35rem;
+    height: 3.35rem;
+}
+.mobile-nav-cat-hero-copy {
+    min-width: 0;
+}
 .mobile-nav-panel-title {
     margin: 0;
-    padding: 1rem 1.1rem 0.55rem;
-    font-size: 1.35rem;
+    padding: 0;
+    font-size: 1.55rem;
     font-weight: 800;
     letter-spacing: -0.02em;
     color: #004B93;
-    line-height: 1.2;
+    line-height: 1.15;
+}
+.mobile-nav-cat-blurb {
+    margin: 0.35rem 0 0;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    color: #64748b;
+}
+.mobile-nav-card-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    padding: 0 1rem;
+}
+.mobile-nav-card {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    width: 100%;
+    padding: 0.4rem 0.95rem;
+    background: #fff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 1rem;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    cursor: pointer;
+    text-align: left;
+    color: #004B93;
+    overflow: visible;
+}
+.mobile-nav-card:active {
+    background: #f8fafc;
+}
+.mobile-nav-card--combo {
+    background: #fff7f0;
+    border-color: #ffb06a;
+    color: #ff7d00;
+}
+.mobile-nav-card--combo:active {
+    background: #ffefe0;
+}
+.mobile-nav-card-leading {
+    position: relative;
+    flex-shrink: 0;
+}
+.mobile-nav-card-glyph {
+    width: 2.6rem;
+    height: 2.6rem;
+    border-radius: 9999px;
+    background: #e8f1fb;
+    color: #004B93;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+.mobile-nav-card-glyph--combo {
+    background: #ffe4cc;
+    color: #ff7d00;
+}
+.mobile-nav-card-glyph--photo .mobile-nav-item-icon {
+    width: 1.85rem;
+    height: 1.85rem;
+}
+.mobile-nav-card-glyph--sheet {
+    width: 2.85rem;
+    height: 2.85rem;
+    background: transparent;
+    border-radius: 0;
+    overflow: visible;
+}
+.mobile-nav-card-glyph--sheet .mobile-nav-item-icon {
+    width: 2.85rem;
+    height: 2.85rem;
+    object-fit: contain;
+    display: block;
+}
+.mobile-nav-card--combo .mobile-nav-card-glyph--sheet {
+    width: 3.05rem;
+    height: 3.05rem;
+}
+.mobile-nav-card--combo .mobile-nav-card-glyph--sheet .mobile-nav-item-icon {
+    width: 3.05rem;
+    height: 3.05rem;
+}
+.mobile-nav-card-svg {
+    width: 1.2rem;
+    height: 1.2rem;
+}
+.mobile-nav-combo-badge {
+    position: absolute;
+    top: -0.4rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #ff7d00;
+    color: #fff;
+    font-size: 0.55rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    line-height: 1;
+    padding: 0.22rem 0.35rem;
+    border-radius: 999px;
+    white-space: nowrap;
+    box-shadow: 0 1px 3px rgba(255, 125, 0, 0.35);
+}
+.mobile-nav-card-label {
+    flex: 1;
+    min-width: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.25;
+}
+.mobile-nav-card-chevron {
+    width: 1.05rem;
+    height: 1.05rem;
+    flex-shrink: 0;
+    color: #004B93;
+    opacity: 0.75;
+}
+.mobile-nav-card--combo .mobile-nav-card-chevron {
+    color: #ff7d00;
+    opacity: 1;
 }
 .mobile-nav-item {
     display: flex;
@@ -615,27 +791,43 @@ body.mobile-nav-open header.sticky {
     justify-content: space-between;
     gap: 0.75rem;
     width: 100%;
-    padding: 1rem 1.1rem;
-    font-size: 1rem;
-    font-weight: 500;
-    color: #1e293b;
+    padding: 0.85rem 1.1rem;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #004B93;
     background: #fff;
     border: 0;
     border-bottom: 1px solid #e8edf2;
     cursor: pointer;
     text-align: left;
 }
+.mobile-nav-item-main {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.85rem;
+    min-width: 0;
+}
+.mobile-nav-item-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    flex-shrink: 0;
+    object-fit: contain;
+    display: block;
+}
+.mobile-nav-item-text {
+    line-height: 1.2;
+}
 .mobile-nav-item:active {
-    background: #f1f5f9;
+    background: #eff6ff;
 }
 .mobile-nav-item--accent {
     color: #ff7d00;
-    font-weight: 600;
+    font-weight: 700;
 }
 .mobile-nav-item-chevron {
     width: 1rem;
     height: 1rem;
-    color: #64748b;
+    color: #94a3b8;
     flex-shrink: 0;
 }
 .mobile-nav-item--accent .mobile-nav-item-chevron {
@@ -1033,7 +1225,8 @@ body {
 
 /* Mobile filter drawer */
 #filter-drawer.open { transform: translateY(0); }
-#filter-overlay.open { opacity: 1; visibility: visible; }
+#filter-overlay.open { opacity: 1; visibility: visible; pointer-events: auto; }
+#filter-overlay:not(.open) { pointer-events: none; }
 .filter-drawer-scroll {
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
@@ -1683,6 +1876,45 @@ body.cart-open {
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
 }
+
+/* Mobile: keep site header (☰ / logo / search / cart) above PDP */
+@media (max-width: 767px) {
+    /*
+     * BodyScrollLock uses position:fixed + top:-scrollY on body, which pulls a
+     * sticky header off-screen. Pin the header to the viewport while PDP is open.
+     * JS also forces body.style.top = 0 so fixed children aren't offset.
+     */
+    body.pdp-open header.sticky {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        z-index: 72;
+    }
+    /*
+     * Override base `inset: 0` with explicit edges under the header.
+     * Do NOT use `inset: unset` afterward — that clears top/right/bottom/left
+     * and collapses the sheet (body scroll-locked → page feels stuck).
+     */
+    #pdp-backdrop {
+        top: var(--site-header-h, 4.75rem);
+        right: 0;
+        bottom: 0;
+        left: 0;
+    }
+    #pdp {
+        top: var(--site-header-h, 4.75rem);
+        right: 0;
+        bottom: 0;
+        left: 0;
+        width: auto;
+        max-height: none;
+        border-radius: 0;
+        box-shadow: none;
+    }
+}
+
 @media (min-width: 768px) {
     .pdp {
         inset: 3% auto 3% 50%;

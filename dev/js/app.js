@@ -173,6 +173,7 @@ function openMobileSearch() {
     const panel = document.getElementById('mobile-search-panel');
     const toggle = document.getElementById('mobile-search-toggle');
     if (!panel) return;
+    if (typeof closeProductDetail === 'function') closeProductDetail();
     panel.hidden = false;
     panel.classList.add('is-open');
     toggle?.classList.add('is-active');

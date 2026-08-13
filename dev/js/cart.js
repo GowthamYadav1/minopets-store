@@ -296,6 +296,8 @@ function toggleCart() {
     const panel = document.getElementById('cart-panel');
     const overlay = document.getElementById('cart-overlay');
     if (panel.classList.contains('hidden')) {
+        if (typeof closeProductDetail === 'function') closeProductDetail();
+        if (typeof closeMobileNav === 'function') closeMobileNav({ fromHistory: true });
         panel.classList.remove('hidden');
         overlay.classList.remove('hidden');
         lockBodyScroll();

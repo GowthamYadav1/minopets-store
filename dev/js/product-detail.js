@@ -199,51 +199,39 @@ function closePdpLightbox(opts = {}) {
     }
 }
 
-async function openProductDetail(productId) {
-    const product = products.find((p) => p.id == productId);
-    if (!product) return;
-
-    const token = ++pdpOpenToken;
-    pdpOpenId = product.id;
-    pdpMediaIndex = 0;
-
-    // Only include image files that exist (-01, -02, -03… stop at first gap).
-    const gallery = typeof resolveProductGalleryUrls === 'function'
-        ? await resolveProductGalleryUrls(product)
-        : (product.image ? [product.image] : []);
-    if (token !== pdpOpenToken) return;
-
-    pdpMedia = buildPdpMedia(product, gallery);
-
+function renderPdpBuySection(product) {
     const hasPacks = typeof productHasPacks === 'function' && productHasPacks(product);
     const available = typeof getAvailableStock === 'function'
         ? getAvailableStock(product.id)
         : (product.available ?? null);
     const unit = typeof packUnitLabel === 'function' ? packUnitLabel(product) : 'fish';
-    const bullets = getProductDetailBullets(product);
-    const includes = getComboIncludeLabels(product);
 
-    let buySection = '';
     if (hasPacks) {
         const inStock = available == null
             ? true
             : available > 0 && getProductPackOptions(product).some((p) => available >= p.units);
-        buySection = inStock
-            ? `<h3 class="pdp-section-title text-base font-bold text-brand-blue mb-1">Choose pack</h3>
+        return {
+            hasPacks: true,
+            html: inStock
+                ? `<h3 class="pdp-section-title text-base font-bold text-brand-blue mb-1">Choose pack</h3>
                <p id="pack-from-${product.id}" class="text-xs text-slate-400 mb-1.5">${available != null ? `${available} ${unit} in stock · options share stock` : 'Options'}</p>
                ${typeof renderPackOptionsHtml === 'function' ? renderPackOptionsHtml(product, available) : ''}`
-            : `<p class="text-brand-coral font-bold text-base">Out of Stock</p>`;
-    } else {
-        const max = typeof maxQtyForProduct === 'function' ? maxQtyForProduct(product.id) : (product.inStock ? 999 : 0);
-        const qty = AppState.cart[product.id] || 0;
-        const inStock = max > 0;
-        const top = typeof renderPriceBTopHtml === 'function'
-            ? renderPriceBTopHtml(product.price, product.mrp)
-            : `<span class="price-solo">₹${product.price}/-</span>`;
-        const save = typeof renderPriceBSaveHtml === 'function'
-            ? renderPriceBSaveHtml(product.price, product.mrp)
-            : '';
-        buySection = inStock
+                : `<p class="text-brand-coral font-bold text-base">Out of Stock</p>`
+        };
+    }
+
+    const max = typeof maxQtyForProduct === 'function' ? maxQtyForProduct(product.id) : (product.inStock ? 999 : 0);
+    const qty = AppState.cart[product.id] || 0;
+    const inStock = max > 0;
+    const top = typeof renderPriceBTopHtml === 'function'
+        ? renderPriceBTopHtml(product.price, product.mrp)
+        : `<span class="price-solo">₹${product.price}/-</span>`;
+    const save = typeof renderPriceBSaveHtml === 'function'
+        ? renderPriceBSaveHtml(product.price, product.mrp)
+        : '';
+    return {
+        hasPacks: false,
+        html: inStock
             ? `<div class="pdp-price-b pdp-buy-simple">
                    <div class="buy-row buy-row-pdp">
                        ${top}
@@ -261,18 +249,26 @@ async function openProductDetail(productId) {
                    ${save}
                    <div class="price-b-tax">Inclusive of all taxes</div>
                </div>`
-            : `<p class="text-brand-coral font-bold text-sm">Out of Stock</p>`;
-    }
+            : `<p class="text-brand-coral font-bold text-sm">Out of Stock</p>`
+    };
+}
 
-    const thumbs = pdpMedia.map((m, i) => `
-        <button type="button" class="thumb ${i === 0 ? 'is-active' : ''} ${m.type === 'video' ? 'thumb-video' : ''}"
+function renderPdpThumbsHtml() {
+    return pdpMedia.map((m, i) => `
+        <button type="button" class="thumb ${i === pdpMediaIndex ? 'is-active' : ''} ${m.type === 'video' ? 'thumb-video' : ''}"
             onclick="setPdpMedia(${i})" aria-label="${m.type === 'video' ? 'Play video' : 'View photo ' + (i + 1)}">
             ${m.type === 'video'
                 ? `<img src="${(pdpMedia.find((x) => x.type === 'image') || {}).src || ''}" class="w-full h-full object-cover" alt="">`
                 : `<img src="${m.src}" class="w-full h-full object-cover" alt=""
                     onerror="typeof handleProductImgError==='function'?handleProductImgError(this):(this.onerror=null)">`}
         </button>`).join('');
+}
 
+function paintProductDetailBody(product, { galleryPending = false } = {}) {
+    const buy = renderPdpBuySection(product);
+    const bullets = getProductDetailBullets(product);
+    const includes = getComboIncludeLabels(product);
+    const thumbs = renderPdpThumbsHtml();
     const descHtml = product.description
         ? `<p class="pdp-desc text-base text-slate-600 mt-4 leading-relaxed">${product.description}</p>`
         : '';
@@ -285,20 +281,24 @@ async function openProductDetail(productId) {
         <ul class="detail-list pdp-detail-list mb-4">${bullets.map((d) => `<li>${d}</li>`).join('')}</ul>
     ` : '';
 
+    const galleryHint = pdpMedia.length > 1
+        ? `<div id="pdp-thumbs" class="flex gap-2 mt-2.5 overflow-x-auto pb-1">${thumbs}</div>
+           <p class="text-xs text-slate-400 mt-1.5">Tap a photo to enlarge · tap video to play</p>`
+        : (galleryPending
+            ? `<p id="pdp-gallery-pending" class="text-xs text-slate-400 mt-2">Loading more photos…</p>`
+            : '');
+
     document.getElementById('pdp-body').innerHTML = `
         <div class="grid lg:grid-cols-2 gap-4 lg:gap-5 items-start">
-            <div class="min-w-0">
+            <div class="min-w-0" id="pdp-media-col">
                 <div id="pdp-stage" class="rounded-xl overflow-hidden bg-slate-100 border border-slate-200 aspect-[4/3]">
                     ${renderPdpMainMedia()}
                 </div>
-                ${pdpMedia.length > 1 ? `
-                    <div id="pdp-thumbs" class="flex gap-2 mt-2.5 overflow-x-auto pb-1">${thumbs}</div>
-                    <p class="text-xs text-slate-400 mt-1.5">Tap a photo to enlarge · tap video to play</p>
-                ` : ''}
+                ${galleryHint}
             </div>
             <div class="min-w-0 pdp-info">
                 <h2 class="pdp-title text-2xl sm:text-[1.75rem] font-bold text-brand-blue leading-snug">${product.name}</h2>
-                <div class="mt-3">${buySection}</div>
+                <div class="mt-3">${buy.html}</div>
                 ${descHtml}
                 ${includesHtml}
                 ${detailsHtml}
@@ -310,21 +310,90 @@ async function openProductDetail(productId) {
     if (typeof bindPdpVideoLoading === 'function') {
         bindPdpVideoLoading(document.getElementById('pdp-stage'));
     }
+    return buy.hasPacks;
+}
+
+/** Update stage/thumbs after background gallery resolve (keeps pack/qty UI intact). */
+function applyPdpGalleryUpdate(product, gallery) {
+    if (!product || pdpOpenId == null || String(pdpOpenId) !== String(product.id)) return;
+    const next = buildPdpMedia(product, gallery);
+    const same =
+        next.length === pdpMedia.length &&
+        next.every((m, i) => m.type === pdpMedia[i]?.type && m.src === pdpMedia[i]?.src);
+    document.getElementById('pdp-gallery-pending')?.remove();
+    if (same) return;
+
+    const keepIdx = pdpMediaIndex;
+    pdpMedia = next;
+    pdpMediaIndex = Math.max(0, Math.min(keepIdx, pdpMedia.length - 1));
+
+    const col = document.getElementById('pdp-media-col');
+    if (!col) return;
+    const thumbs = renderPdpThumbsHtml();
+    col.innerHTML = `
+        <div id="pdp-stage" class="rounded-xl overflow-hidden bg-slate-100 border border-slate-200 aspect-[4/3]">
+            ${renderPdpMainMedia()}
+        </div>
+        ${pdpMedia.length > 1 ? `
+            <div id="pdp-thumbs" class="flex gap-2 mt-2.5 overflow-x-auto pb-1">${thumbs}</div>
+            <p class="text-xs text-slate-400 mt-1.5">Tap a photo to enlarge · tap video to play</p>
+        ` : ''}`;
+    if (typeof bindPdpVideoLoading === 'function') {
+        bindPdpVideoLoading(document.getElementById('pdp-stage'));
+    }
+}
+
+async function openProductDetail(productId) {
+    const product = products.find((p) => p.id == productId);
+    if (!product) return;
+
+    const listScrollY = window.scrollY || window.pageYOffset || 0;
+    if (typeof BodyScrollLock !== 'undefined') BodyScrollLock.remember(listScrollY);
+
+    const token = ++pdpOpenToken;
+    pdpOpenId = product.id;
+    pdpMediaIndex = 0;
+
+    // Open immediately with main image (or cached full gallery) — no network wait
+    const optimistic = typeof productGalleryUrlsOptimistic === 'function'
+        ? productGalleryUrlsOptimistic(product)
+        : (product.image ? [product.image] : []);
+    const cached = product.sku && typeof productGalleryCache !== 'undefined'
+        && productGalleryCache.has(String(product.sku).trim());
+    pdpMedia = buildPdpMedia(product, optimistic);
+
+    const hasPacks = paintProductDetailBody(product, { galleryPending: !cached && !!product.sku });
 
     const pdp = document.getElementById('pdp');
     const backdrop = document.getElementById('pdp-backdrop');
+    const alreadyOpen = pdp?.classList.contains('is-open');
+    if (typeof syncMobileNavHeaderOffset === 'function') syncMobileNavHeaderOffset();
     pdp.classList.add('is-open');
     backdrop.classList.add('is-open');
     pdp.setAttribute('aria-hidden', 'false');
     pdp.dataset.pid = String(product.id);
-    if (typeof BodyScrollLock !== 'undefined') BodyScrollLock.lock('pdp-open');
+    if (typeof BodyScrollLock !== 'undefined') BodyScrollLock.lock('pdp-open', listScrollY);
     else document.body.classList.add('pdp-open');
+    document.body.style.top = '0px';
+    if (typeof syncMobileNavHeaderOffset === 'function') syncMobileNavHeaderOffset();
     document.querySelector('#pdp .pdp-scroll')?.scrollTo?.(0, 0);
     document.getElementById('pdp')?.scrollTo?.(0, 0);
 
     if (hasPacks && typeof syncPackCardUI === 'function') syncPackCardUI(product.id);
     if (!hasPacks && typeof syncQtyControls === 'function') syncQtyControls(product.id);
-    if (typeof ModalHistory !== 'undefined') ModalHistory.push('pdp');
+    if (!alreadyOpen && typeof ModalHistory !== 'undefined') ModalHistory.push('pdp');
+
+    // Finish gallery in background (HEAD + cache); update thumbs if more photos found
+    if (typeof resolveProductGalleryUrls === 'function' && product.sku && !cached) {
+        try {
+            const gallery = await resolveProductGalleryUrls(product);
+            if (token !== pdpOpenToken) return;
+            applyPdpGalleryUpdate(product, gallery);
+        } catch (err) {
+            console.warn('[pdp] gallery resolve failed', err);
+            document.getElementById('pdp-gallery-pending')?.remove();
+        }
+    }
 }
 
 /** Called after cart changes — pack rows already synced in place; refresh simple qty in open PDP. */

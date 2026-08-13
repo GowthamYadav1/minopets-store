@@ -4,6 +4,130 @@
 
 const MOBILE_NAV_CHEVRON = `<svg class="mobile-nav-item-chevron" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>`;
 
+/** Side-nav icons cropped from assets/SideNav/SideNavIcons.png */
+const MOBILE_NAV_ICONS = {
+    Home: '/assets/SideNav/nav-home.png',
+    Fish: '/assets/SideNav/nav-fish.png',
+    Shrimps: '/assets/SideNav/nav-shrimps.png',
+    Plants: '/assets/SideNav/nav-plants.png',
+    Accessories: '/assets/SideNav/nav-acc-hero.png',
+    Aquarium: '/assets/SideNav/nav-aquarium.png',
+    Deals: '/assets/SideNav/nav-deals.png'
+};
+
+function mobileNavIconHtml(label, extraClass = '') {
+    const src = MOBILE_NAV_ICONS[label];
+    if (!src) return '';
+    const cls = ['mobile-nav-item-icon', extraClass].filter(Boolean).join(' ');
+    return `<img class="${cls}" src="${src}" alt="" width="40" height="40" decoding="async" draggable="false">`;
+}
+
+function mobileNavLabelHtml(label) {
+    return `<span class="mobile-nav-item-main">${mobileNavIconHtml(label)}<span class="mobile-nav-item-text">${label}</span></span>`;
+}
+
+const MOBILE_NAV_SVG = {
+    grid: `<svg class="mobile-nav-card-svg" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/></svg>`,
+    gift: `<svg class="mobile-nav-card-svg" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 8v13M5 12h14v9H5v-9zM4 8h16v4H4V8z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 8c-1.6-2.6-4.2-3-5.2-1.6S6.4 9.4 12 8c1.6-2.6 4.2-3 5.2-1.6S17.6 9.4 12 8z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>`,
+    chevron: `<svg class="mobile-nav-card-chevron" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>`
+};
+
+/** Shared across categories (All / Combo rows) — from accessories sheet, renamed generic */
+const MOBILE_NAV_SHARED_ICONS = {
+    all: '/assets/SideNav/nav-icon-all.png',
+    combo: '/assets/SideNav/nav-icon-combo.png'
+};
+
+/**
+ * Categories with illustrated sheet icons.
+ * `hero` + per-sub paths; All/Combo use MOBILE_NAV_SHARED_ICONS.
+ */
+const MOBILE_NAV_CAT_SHEETS = {
+    Fish: {
+        hero: '/assets/SideNav/nav-fish.png',
+        subs: {
+            'Barbs & Minnows': '/assets/SideNav/nav-fish-barbs.png',
+            'Betta & Gourami': '/assets/SideNav/nav-fish-betta.png',
+            'Bottom Feeders': '/assets/SideNav/nav-fish-bottom.png',
+            Flowerhorn: '/assets/SideNav/nav-fish-flowerhorn.png',
+            Guppy: '/assets/SideNav/nav-fish-guppy.png',
+            'Tetras & Rasboras': '/assets/SideNav/nav-fish-tetras.png'
+        }
+    },
+    Plants: {
+        hero: '/assets/SideNav/nav-plants.png',
+        subs: {
+            'Carpet Plants': '/assets/SideNav/nav-plant-carpet.png',
+            'Floating Plants': '/assets/SideNav/nav-plant-floating.png',
+            'Hardscape Plants': '/assets/SideNav/nav-plant-hardscape.png',
+            'Moss & Ferns': '/assets/SideNav/nav-plant-moss.png',
+            'Stem Plants': '/assets/SideNav/nav-plant-stem.png',
+            'Tissue Culture': '/assets/SideNav/nav-plant-tissue.png'
+        }
+    },
+    Accessories: {
+        hero: '/assets/SideNav/nav-acc-hero.png',
+        subs: {
+            'Aquascape Tools': '/assets/SideNav/nav-acc-tools.png',
+            'Filter Media': '/assets/SideNav/nav-acc-media.png',
+            'Filters & Pumps': '/assets/SideNav/nav-acc-pump.png',
+            Lighting: '/assets/SideNav/nav-acc-light.png',
+            'Substrate & Soil': '/assets/SideNav/nav-acc-soil.png'
+        }
+    },
+    Shrimps: {
+        hero: '/assets/SideNav/nav-shrimps.png',
+        subs: {
+            Neocaridina: '/assets/SideNav/nav-shrimp.png'
+        }
+    },
+    Aquarium: {
+        hero: '/assets/SideNav/nav-aquarium.png',
+        subs: {
+            'Imported Aquarium': '/assets/SideNav/nav-aqm-imported.png',
+            'Ultra Clear Glass Aquarium': '/assets/SideNav/nav-aqm-ultraclear.png',
+            'Wall Hanging': '/assets/SideNav/nav-aqm-wall.png'
+        }
+    }
+};
+
+const MOBILE_NAV_CAT_BLURBS = {
+    Fish: 'Explore healthy freshwater fish — from tetras & guppies to flowerhorn.',
+    Shrimps: 'Explore our wide range of healthy & vibrant shrimp varieties.',
+    Plants: 'Carpet plants, stems, moss, tissue culture & aquascape greens.',
+    Accessories: 'Everything you need for a better aquarium experience.',
+    Aquarium: 'Wall hanging, ultra-clear glass & imported aquarium sets.'
+};
+
+function mobileNavSheetIconHtml(src, extraClass = '') {
+    const cls = ['mobile-nav-item-icon', extraClass].filter(Boolean).join(' ');
+    return `<img class="${cls}" src="${src}" alt="" width="40" height="40" decoding="async" draggable="false">`;
+}
+
+function mobileNavSheetLeadingHtml(src) {
+    return `<span class="mobile-nav-card-glyph mobile-nav-card-glyph--sheet">${mobileNavSheetIconHtml(src)}</span>`;
+}
+
+function mobileNavSubLeadingHtml(cat, sub) {
+    const sheetSub = MOBILE_NAV_CAT_SHEETS[cat]?.subs?.[sub];
+    if (sheetSub) return mobileNavSheetLeadingHtml(sheetSub);
+    return `<span class="mobile-nav-card-glyph mobile-nav-card-glyph--photo">${mobileNavIconHtml(cat)}</span>`;
+}
+
+function mobileNavCardHtml({ label, onclick, kind = 'default', leading, badge }) {
+    const combo = kind === 'combo';
+    const showBadge = badge === true || (combo && badge !== false);
+    return `
+        <button type="button" class="mobile-nav-card${combo ? ' mobile-nav-card--combo' : ''}" onclick="${onclick}">
+            <span class="mobile-nav-card-leading">
+                ${leading}
+                ${showBadge ? '<span class="mobile-nav-combo-badge">COMBO</span>' : ''}
+            </span>
+            <span class="mobile-nav-card-label">${label}</span>
+            ${MOBILE_NAV_SVG.chevron}
+        </button>`;
+}
+
 let mobileNavPanel = 'root'; // 'root' | category name
 let mobileNavOpen = false;
 
@@ -60,18 +184,18 @@ function renderMobileNavBody() {
     if (mobileNavPanel === 'root') {
         const catRows = Object.keys(categories).map((cat) => `
             <button type="button" class="mobile-nav-item" onclick="openMobileNavCategory('${cat.replace(/'/g, "\\'")}')">
-                <span>${cat}</span>
+                ${mobileNavLabelHtml(cat)}
                 ${MOBILE_NAV_CHEVRON}
             </button>
         `).join('');
         body.innerHTML = `
-            ${catRows}
-            <button type="button" class="mobile-nav-item mobile-nav-item--accent" onclick="mobileNavGo('deals')">
-                <span>Deals</span>
+            <button type="button" class="mobile-nav-item" onclick="mobileNavGo('home')">
+                ${mobileNavLabelHtml('Home')}
                 ${MOBILE_NAV_CHEVRON}
             </button>
-            <button type="button" class="mobile-nav-item" onclick="mobileNavGo('home')">
-                <span>Home</span>
+            ${catRows}
+            <button type="button" class="mobile-nav-item mobile-nav-item--accent" onclick="mobileNavGo('deals')">
+                ${mobileNavLabelHtml('Deals')}
                 ${MOBILE_NAV_CHEVRON}
             </button>
         `;
@@ -83,33 +207,61 @@ function renderMobileNavBody() {
     const subs = orderedSubcategories(cat);
     const comboSubs = subs.filter(isComboSubcategory);
     const regularSubs = subs.filter((name) => !isComboSubcategory(name));
+    const blurb = MOBILE_NAV_CAT_BLURBS[cat]
+        || categoryMeta[cat]?.description
+        || `Browse ${cat.toLowerCase()} for your aquarium.`;
+    const sheet = MOBILE_NAV_CAT_SHEETS[cat];
+    const useSheet = Boolean(sheet);
+    const heroIcon = useSheet
+        ? mobileNavSheetIconHtml(sheet.hero, 'mobile-nav-hero-icon')
+        : mobileNavIconHtml(cat, 'mobile-nav-hero-icon');
+    const heroWrapClass = useSheet
+        ? 'mobile-nav-cat-hero-icon-wrap mobile-nav-cat-hero-icon-wrap--sheet'
+        : 'mobile-nav-cat-hero-icon-wrap';
 
-    const comboRows = comboSubs.map((sub) => `
-        <button type="button" class="mobile-nav-item mobile-nav-item--accent" onclick="mobileNavGo('${slug}/${subcategoryToSlug(sub)}')">
-            <span><span class="combo-pill" style="margin-right:0.35rem">COMBO</span>${sub}</span>
-            ${MOBILE_NAV_CHEVRON}
-        </button>
-    `).join('');
+    const allCard = mobileNavCardHtml({
+        label: `All ${cat}`,
+        onclick: `mobileNavGo('${slug}')`,
+        leading: useSheet
+            ? mobileNavSheetLeadingHtml(MOBILE_NAV_SHARED_ICONS.all)
+            : `<span class="mobile-nav-card-glyph">${MOBILE_NAV_SVG.grid}</span>`
+    });
 
-    const regRows = regularSubs.map((sub) => `
-        <button type="button" class="mobile-nav-item" onclick="mobileNavGo('${slug}/${subcategoryToSlug(sub)}')">
-            <span>${sub}</span>
-            ${MOBILE_NAV_CHEVRON}
-        </button>
-    `).join('');
+    const comboCards = comboSubs.map((sub) => mobileNavCardHtml({
+        label: sub,
+        onclick: `mobileNavGo('${slug}/${subcategoryToSlug(sub)}')`,
+        kind: 'combo',
+        badge: useSheet ? false : true,
+        leading: useSheet
+            ? mobileNavSheetLeadingHtml(MOBILE_NAV_SHARED_ICONS.combo)
+            : `<span class="mobile-nav-card-glyph mobile-nav-card-glyph--combo">${MOBILE_NAV_SVG.gift}</span>`
+    })).join('');
+
+    const regCards = regularSubs.map((sub) => mobileNavCardHtml({
+        label: sub,
+        onclick: `mobileNavGo('${slug}/${subcategoryToSlug(sub)}')`,
+        leading: mobileNavSubLeadingHtml(cat, sub)
+    })).join('');
 
     body.innerHTML = `
-        <button type="button" class="mobile-nav-back" onclick="openMobileNavCategory(null)">
-            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-            All departments
-        </button>
-        <h2 class="mobile-nav-panel-title">${cat}</h2>
-        <button type="button" class="mobile-nav-item" onclick="mobileNavGo('${slug}')">
-            <span>All ${cat}</span>
-            ${MOBILE_NAV_CHEVRON}
-        </button>
-        ${comboRows}
-        ${regRows}
+        <div class="mobile-nav-panel">
+            <button type="button" class="mobile-nav-back" onclick="openMobileNavCategory(null)">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                All departments
+            </button>
+            <div class="mobile-nav-cat-hero">
+                <div class="${heroWrapClass}">${heroIcon}</div>
+                <div class="mobile-nav-cat-hero-copy">
+                    <h2 class="mobile-nav-panel-title">${cat}</h2>
+                    <p class="mobile-nav-cat-blurb">${blurb}</p>
+                </div>
+            </div>
+            <div class="mobile-nav-card-list">
+                ${allCard}
+                ${comboCards}
+                ${regCards}
+            </div>
+        </div>
     `;
 }
 
@@ -226,5 +378,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 window.addEventListener('resize', () => {
-    if (mobileNavOpen) syncMobileNavHeaderOffset();
+    if (mobileNavOpen || document.body.classList.contains('pdp-open')) {
+        syncMobileNavHeaderOffset();
+    }
 });

@@ -11,6 +11,10 @@ const PRODUCT_IMAGE_BASE = '/assets/products';
 const PRODUCT_IMAGE_EXTS = ['jpg', 'jpeg', 'png', 'webp'];
 /** Max -01…-NN slots to probe for the PDP gallery. */
 const PRODUCT_GALLERY_MAX = 12;
+/** sku → string[] of existing image URLs */
+const productGalleryCache = new Map();
+/** url → boolean */
+const productUrlExistsCache = new Map();
 
 function productImageUrl(sku, index = 1, ext = 'jpg') {
     if (!sku) return null;
@@ -61,7 +65,8 @@ function productGalleryUrls(product) {
 
 /**
  * Resolve gallery images that actually exist: -01, -02, -03… until the first gap.
- * Avoids broken -02 thumbs when only -01 is present, and includes -03+.
+ * Cached per SKU. Uses HEAD when possible (much faster than downloading each file).
+ * Preferred extension first; other exts only if that slot’s preferred URL is missing.
  */
 async function resolveProductGalleryUrls(product) {
     if (!product) return [];
@@ -69,25 +74,99 @@ async function resolveProductGalleryUrls(product) {
         return product.image ? [product.image] : [];
     }
 
+    const sku = String(product.sku).trim();
+    if (productGalleryCache.has(sku)) {
+        return productGalleryCache.get(sku).slice();
+    }
+
     const ext = preferredImageExt(product);
     const found = [];
 
     for (let i = 1; i <= PRODUCT_GALLERY_MAX; i++) {
         const candidates = [];
-        if (i === 1 && product.image && String(product.image).includes(String(product.sku).trim())) {
+        if (i === 1 && product.image && String(product.image).includes(sku)) {
             candidates.push(product.image);
         }
-        candidates.push(productImageUrl(product.sku, i, ext));
-        for (const e of PRODUCT_IMAGE_EXTS) {
-            if (e !== ext) candidates.push(productImageUrl(product.sku, i, e));
+        candidates.push(productImageUrl(sku, i, ext));
+        // Only fan out to other extensions if preferred (and sheet image) miss
+        const okPreferred = await resolveFirstExisting(candidates);
+        let ok = okPreferred;
+        if (!ok) {
+            const alt = [];
+            for (const e of PRODUCT_IMAGE_EXTS) {
+                if (e !== ext) alt.push(productImageUrl(sku, i, e));
+            }
+            ok = await resolveFirstExisting(alt);
         }
-        const ok = await resolveFirstExisting(candidates);
         if (!ok) break;
         if (!found.includes(ok)) found.push(ok);
     }
 
     if (!found.length && product.image) found.push(product.image);
+    productGalleryCache.set(sku, found.slice());
     return found;
+}
+
+/** Instant gallery for opening PDP — main image only (no network probes). */
+function productGalleryUrlsOptimistic(product) {
+    if (!product) return [];
+    if (product.sku && productGalleryCache.has(String(product.sku).trim())) {
+        return productGalleryCache.get(String(product.sku).trim()).slice();
+    }
+    const main = typeof productMainImage === 'function' ? productMainImage(product) : (product.image || '');
+    return main ? [main] : [];
+}
+
+function preloadImage(url) {
+    return new Promise((resolve) => {
+        if (!url) {
+            resolve(null);
+            return;
+        }
+        if (productUrlExistsCache.has(url)) {
+            resolve(productUrlExistsCache.get(url) ? url : null);
+            return;
+        }
+        const img = new Image();
+        img.onload = () => {
+            productUrlExistsCache.set(url, true);
+            resolve(url);
+        };
+        img.onerror = () => {
+            productUrlExistsCache.set(url, false);
+            resolve(null);
+        };
+        img.src = url;
+    });
+}
+
+/** Prefer cheap HEAD; fall back to Image() if HEAD isn’t reliable. */
+async function urlExistsFast(url) {
+    if (!url) return false;
+    if (productUrlExistsCache.has(url)) return productUrlExistsCache.get(url);
+    try {
+        const res = await fetch(url, { method: 'HEAD', cache: 'force-cache' });
+        // Some static hosts mishandle HEAD — treat non-2xx as unknown and fall back
+        if (res.ok) {
+            productUrlExistsCache.set(url, true);
+            return true;
+        }
+        if (res.status === 404 || res.status === 410) {
+            productUrlExistsCache.set(url, false);
+            return false;
+        }
+    } catch (_) {
+        /* fall through */
+    }
+    return !!(await preloadImage(url));
+}
+
+async function resolveFirstExisting(urls) {
+    for (const url of urls) {
+        if (!url) continue;
+        if (await urlExistsFast(url)) return url;
+    }
+    return null;
 }
 
 /**
@@ -116,19 +195,6 @@ function handleProductImgError(img) {
     img.onerror = null;
     if (img.dataset.fallback) img.src = img.dataset.fallback;
     img.classList.add('loaded');
-}
-
-function preloadImage(url) {
-    return new Promise((resolve) => {
-        if (!url) {
-            resolve(null);
-            return;
-        }
-        const img = new Image();
-        img.onload = () => resolve(url);
-        img.onerror = () => resolve(null);
-        img.src = url;
-    });
 }
 
 /** Extract Google Drive file id from common share / open / uc URLs. */
@@ -386,14 +452,6 @@ function tryStartPdpVideo(root = document) {
             }, { once: true });
         });
     }
-}
-
-async function resolveFirstExisting(urls) {
-    for (const url of urls) {
-        const ok = await preloadImage(url);
-        if (ok) return ok;
-    }
-    return null;
 }
 
 /**

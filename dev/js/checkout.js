@@ -615,6 +615,44 @@ function razorpayPrefill() {
     return { name, contact };
 }
 
+function friendlyRazorpayStartError(err, data) {
+    const code = String(data?.error || err?.message || '').trim();
+    const rzpDesc = String(
+        data?.razorpay?.error?.description ||
+        data?.razorpay?.error?.code ||
+        ''
+    ).trim();
+
+    if (/UrlFetchApp|external_request|permission to call/i.test(code)) {
+        return 'Apps Script needs external URL permission. In the script editor: Run authorizeExternalRequests → Allow → Deploy New version.';
+    }
+    if (code === 'razorpay_script_failed') {
+        return 'Could not load Razorpay checkout (blocked network/adblock?). Try another browser, or use UPI.';
+    }
+    if (code === 'razorpay_disabled') {
+        return 'Razorpay is off in Config. Set razorpay_enabled = TRUE and redeploy.';
+    }
+    if (code === 'unknown_action') {
+        return 'Apps Script is outdated — paste latest Code.gs and Deploy → New version.';
+    }
+    if (code === 'origin_not_allowed') {
+        return 'This site origin is not in Config allowed_origins.';
+    }
+    if (code === 'unauthorized') {
+        return 'Store API token mismatch — check api-config.js vs Script Properties.';
+    }
+    if (code.includes('razorpay_http_401') || /authentication failed|invalid key/i.test(rzpDesc + code)) {
+        return 'Razorpay keys rejected (401). Re-run setRazorpayCredentials with Test Key ID + Secret, then redeploy.';
+    }
+    if (code.includes('razorpay_http_400') || rzpDesc) {
+        return `Razorpay error: ${rzpDesc || code}. Check Test mode keys.`;
+    }
+    if (code && code !== 'razorpay_order_failed') {
+        return `Could not start Razorpay (${code}). Use UPI below, or try again.`;
+    }
+    return 'Could not start Razorpay. Use UPI below, or try again.';
+}
+
 async function startRazorpayPayment() {
     if (!lastPlacedOrder?.order_id) return;
     const errEl = document.getElementById('razorpay-status-err');
@@ -636,6 +674,7 @@ async function startRazorpayPayment() {
         btn.textContent = 'Opening checkout…';
     }
 
+    let lastData = null;
     try {
         await loadRazorpayScript();
         const res = await fetch(MINO_API.baseUrl, {
@@ -650,6 +689,7 @@ async function startRazorpayPayment() {
             })
         });
         const data = await res.json();
+        lastData = data;
         if (data.already && (data.paid || data.status === 'paid')) {
             showPaymentConfirmed(data);
             return;
@@ -706,9 +746,9 @@ async function startRazorpayPayment() {
             btn.textContent = 'Pay now';
         }
     } catch (err) {
-        console.error('[checkout] createRazorpayOrder failed', err);
+        console.error('[checkout] createRazorpayOrder failed', err, lastData);
         if (errEl) {
-            errEl.textContent = 'Could not start Razorpay. Use UPI below, or try again.';
+            errEl.textContent = friendlyRazorpayStartError(err, lastData);
             errEl.classList.remove('hidden');
         }
         if (btn) {

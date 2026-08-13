@@ -9,15 +9,22 @@ window.BodyScrollLock = {
     _y: 0,
     _locks: new Set(),
 
-    lock(id) {
+    lock(id, scrollY) {
         if (!id) return;
         if (this._locks.size === 0) {
-            this._y = window.scrollY || window.pageYOffset || 0;
+            const y = scrollY != null ? Number(scrollY) : (window.scrollY || window.pageYOffset || 0);
+            this._y = isFinite(y) && y >= 0 ? y : 0;
             document.body.style.top = `-${this._y}px`;
         }
         this._locks.add(id);
         document.documentElement.classList.add(id);
         document.body.classList.add(id);
+    },
+
+    /** Remember list position (e.g. before async work) without locking yet. */
+    remember(scrollY) {
+        const y = scrollY != null ? Number(scrollY) : (window.scrollY || window.pageYOffset || 0);
+        if (this._locks.size === 0 && isFinite(y) && y >= 0) this._y = y;
     },
 
     unlock(id) {
@@ -30,8 +37,19 @@ window.BodyScrollLock = {
         document.documentElement.classList.remove(id);
         document.body.classList.remove(id);
         if (this._locks.size === 0) {
+            const y = this._y || 0;
             document.body.style.top = '';
-            window.scrollTo(0, this._y);
+            // Restore after layout drops position:fixed (same-frame scrollTo often lands at 0)
+            const restore = () => {
+                window.scrollTo(0, y);
+                document.documentElement.scrollTop = y;
+                document.body.scrollTop = y;
+            };
+            restore();
+            requestAnimationFrame(() => {
+                restore();
+                requestAnimationFrame(restore);
+            });
         }
     },
 };
