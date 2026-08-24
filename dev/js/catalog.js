@@ -6,10 +6,34 @@ function getCategoryProducts(category, subcategory = null) {
     });
 }
 
+const PRICE_SLIDER_STEP = 10;
+
+function snapPrice(n, step = PRICE_SLIDER_STEP) {
+    const v = Number(n);
+    if (!Number.isFinite(v)) return 0;
+    return Math.round(v / step) * step;
+}
+
+function productFilterPrices(product) {
+    const packs = typeof getProductPackOptions === 'function' ? getProductPackOptions(product) : [];
+    if (packs.length) return packs.map((p) => Number(p.price)).filter((n) => Number.isFinite(n));
+    const n = Number(product?.price);
+    return Number.isFinite(n) ? [n] : [];
+}
+
+function productMatchesPriceRange(product, min, max) {
+    return productFilterPrices(product).some((price) => price >= min && price <= max);
+}
+
 function getPriceBounds(items) {
-    if (!items.length) return { min: 0, max: 1000 };
-    const prices = items.map(p => p.price);
-    return { min: Math.min(...prices), max: Math.max(...prices) };
+    const prices = items.flatMap(productFilterPrices);
+    if (!prices.length) return { min: 0, max: 1000 };
+    const rawMin = Math.min(...prices);
+    const rawMax = Math.max(...prices);
+    let min = Math.floor(rawMin / PRICE_SLIDER_STEP) * PRICE_SLIDER_STEP;
+    let max = Math.ceil(rawMax / PRICE_SLIDER_STEP) * PRICE_SLIDER_STEP;
+    if (max <= min) max = min + PRICE_SLIDER_STEP;
+    return { min, max };
 }
 
 /** Category filter keys, optionally limited by forSubcategories on the definition. */
@@ -41,7 +65,7 @@ function applyFacetFilters(items) {
 
     const { min, max } = AppState.priceRange;
     if (min !== null && max !== null) {
-        result = result.filter(p => p.price >= min && p.price <= max);
+        result = result.filter(p => productMatchesPriceRange(p, min, max));
     }
 
     const category = AppState.route.category;
@@ -385,6 +409,13 @@ function renderSearchPage() {
     renderProductGrid(filtered, 'search-product-list', 'search-no-results');
 }
 
+function filterGroupHint(key, def) {
+    if (def.hint) return def.hint;
+    const label = String(def.label || key).toLowerCase();
+    if (key === 'price') return 'Filter products by price range.';
+    return `Filter products by ${label}.`;
+}
+
 function renderFilterSidebar(category, baseItems) {
     const sidebar = document.getElementById('filter-sidebar');
     if (!sidebar) return;
@@ -393,12 +424,20 @@ function renderFilterSidebar(category, baseItems) {
         ? filterKeysForView(category)
         : (categoryFilters[category] || []);
     const bounds = getPriceBounds(baseItems);
-    const priceMin = AppState.priceRange.min ?? bounds.min;
-    const priceMax = AppState.priceRange.max ?? bounds.max;
+    let priceMin = snapPrice(AppState.priceRange.min ?? bounds.min);
+    let priceMax = snapPrice(AppState.priceRange.max ?? bounds.max);
+    priceMin = Math.max(bounds.min, Math.min(priceMin, bounds.max));
+    priceMax = Math.max(bounds.min, Math.min(priceMax, bounds.max));
+    if (priceMin > priceMax) priceMin = priceMax;
 
-    let html = `<div class="flex items-center justify-between mb-4">
-        <h3 class="font-bold text-brand-blue">Filters</h3>
-        <button onclick="clearAllFilters()" class="text-xs text-brand-coral font-semibold hover:underline">Clear all</button>
+    let html = `<div class="filter-toolbar">
+        <h3 class="filter-panel-heading hidden lg:block">Filters</h3>
+        <button type="button" onclick="clearAllFilters()" class="filter-clear-all">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 002 2h6a2 2 0 002-2l1-12M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2"/>
+            </svg>
+            Clear all
+        </button>
     </div>`;
 
     filterKeys.forEach(key => {
@@ -406,7 +445,8 @@ function renderFilterSidebar(category, baseItems) {
         if (!def) return;
 
         html += `<div class="filter-group">`;
-        html += `<h4 class="text-sm font-semibold text-gray-800 mb-2">${def.label}</h4>`;
+        html += `<h4 class="filter-group-title">${def.label}</h4>`;
+        html += `<p class="filter-group-hint">${filterGroupHint(key, def)}</p>`;
 
         if (def.type === 'checkbox') {
             def.options.forEach(opt => {
@@ -427,12 +467,12 @@ function renderFilterSidebar(category, baseItems) {
                 <div class="price-range-track" role="group" aria-label="Price range">
                     <div class="price-range-fill" style="left:${((priceMin - bounds.min) / (bounds.max - bounds.min || 1)) * 100}%; right:${100 - ((priceMax - bounds.min) / (bounds.max - bounds.min || 1)) * 100}%"></div>
                     <input type="range" class="price-range-input" data-price="min" min="${bounds.min}" max="${bounds.max}" value="${priceMin}"
-                        step="1" aria-label="Minimum price"
+                        step="${PRICE_SLIDER_STEP}" aria-label="Minimum price"
                         onpointerdown="activatePriceHandle(this)" onfocus="activatePriceHandle(this)"
                         oninput="onPriceMinChange(this, ${bounds.min}, ${bounds.max})"
                         onchange="commitPriceRange()" onpointerup="commitPriceRange()" ontouchend="commitPriceRange()">
                     <input type="range" class="price-range-input" data-price="max" min="${bounds.min}" max="${bounds.max}" value="${priceMax}"
-                        step="1" aria-label="Maximum price"
+                        step="${PRICE_SLIDER_STEP}" aria-label="Maximum price"
                         onpointerdown="activatePriceHandle(this)" onfocus="activatePriceHandle(this)"
                         oninput="onPriceMaxChange(this, ${bounds.min}, ${bounds.max})"
                         onchange="commitPriceRange()" onpointerup="commitPriceRange()" ontouchend="commitPriceRange()">
@@ -459,8 +499,8 @@ function onPriceMinChange(el, boundMin, boundMax) {
     const track = el.closest('.price-range-track');
     const maxEl = track?.querySelector('[data-price="max"]');
     if (!maxEl) return;
-    let min = parseInt(el.value, 10);
-    let max = parseInt(maxEl.value, 10);
+    let min = snapPrice(el.value);
+    let max = snapPrice(maxEl.value);
     if (min > max) { min = max; el.value = min; }
     syncPriceInputs('min', min);
     syncPriceInputs('max', max);
@@ -475,8 +515,8 @@ function onPriceMaxChange(el, boundMin, boundMax) {
     const track = el.closest('.price-range-track');
     const minEl = track?.querySelector('[data-price="min"]');
     if (!minEl) return;
-    let min = parseInt(minEl.value, 10);
-    let max = parseInt(el.value, 10);
+    let min = snapPrice(minEl.value);
+    let max = snapPrice(el.value);
     if (max < min) { max = min; el.value = max; }
     syncPriceInputs('min', min);
     syncPriceInputs('max', max);
@@ -682,5 +722,7 @@ function closeFilterDrawer(opts = {}) {
 function syncMobileFilterPanel() {
     const mobilePanel = document.getElementById('filter-drawer-content');
     const sidebar = document.getElementById('filter-sidebar');
-    if (mobilePanel && sidebar) mobilePanel.innerHTML = sidebar.innerHTML;
+    if (!mobilePanel || !sidebar) return;
+    mobilePanel.innerHTML = sidebar.innerHTML;
+    mobilePanel.querySelector('.filter-panel-heading')?.remove();
 }

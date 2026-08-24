@@ -4,6 +4,7 @@ function initHeroSlider() {
     AppState.currentSlide = 0;
     if (AppState.route.view === 'home') manageHeroVideo(0);
     startSlider();
+    bindHeroSwipe();
     document.addEventListener('visibilitychange', () => {
         if (document.hidden) pauseHeroVideo();
         else if (AppState.route.view === 'home' && AppState.currentSlide === 0 && !AppState.sliderPaused) playHeroVideo();
@@ -71,10 +72,44 @@ function nextSlide() {
     goToSlide((AppState.currentSlide + 1) % slides.length);
 }
 
+function prevSlide() {
+    const slides = document.querySelectorAll('.hero-slide');
+    if (!slides.length) return;
+    goToSlide((AppState.currentSlide - 1 + slides.length) % slides.length);
+}
+
+function bindHeroSwipe() {
+    const el = document.getElementById('hero-slider');
+    if (!el || el.dataset.swipeBound === '1') return;
+    el.dataset.swipeBound = '1';
+
+    let startX = 0;
+    let startY = 0;
+    let tracking = false;
+
+    el.addEventListener('touchstart', (e) => {
+        if (e.touches.length !== 1) return;
+        tracking = true;
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+    }, { passive: true });
+
+    el.addEventListener('touchend', (e) => {
+        if (!tracking) return;
+        tracking = false;
+        const t = e.changedTouches[0];
+        const dx = t.clientX - startX;
+        const dy = t.clientY - startY;
+        if (Math.abs(dx) < 48 || Math.abs(dx) <= Math.abs(dy)) return;
+        if (dx < 0) nextSlide();
+        else prevSlide();
+    }, { passive: true });
+}
+
 function startSlider() {
     AppState.sliderInterval = setInterval(() => {
         if (!AppState.sliderPaused && AppState.route.view === 'home') nextSlide();
-    }, 5000);
+    }, 3000);
 }
 
 function resetSliderInterval() {

@@ -15,6 +15,7 @@
     position: relative;
     background: #fff;
     box-sizing: border-box;
+    touch-action: pan-y;
 }
 #hero-slides { position: relative; }
 .hero-slide { display: none; }
@@ -974,6 +975,30 @@ body {
 }
 #scroll-top.above-cart { bottom: 5.5rem; }
 
+/* Sticky cart bar: white so it never blends into the navy footer */
+#mobile-cart-bar {
+    background: #fff;
+    color: #0f172a;
+    border-top: 1px solid #e2e8f0;
+    box-shadow: 0 -8px 28px rgba(15, 23, 42, 0.14);
+    padding: 0.85rem 1rem max(0.85rem, env(safe-area-inset-bottom));
+}
+.mobile-cart-bar-icon {
+    flex-shrink: 0;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.65rem;
+    background: #e8f1fb;
+    color: #004B93;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.mobile-cart-bar-icon svg {
+    width: 1.35rem;
+    height: 1.35rem;
+}
+
 @media (max-width: 639px) {
     .footer-wave { height: 2rem; }
     .footer-heading { margin-bottom: 0.375rem; font-size: 0.65rem; }
@@ -1230,6 +1255,106 @@ body {
 .filter-drawer-scroll {
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
+}
+.filter-drawer-header {
+    flex-shrink: 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 1rem 1rem 0.85rem;
+    background: #fff;
+    border-bottom: 1px solid #e5e7eb;
+}
+.filter-drawer-heading {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+}
+.filter-drawer-icon {
+    flex-shrink: 0;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 999px;
+    background: #e8f1fb;
+    color: #004B93;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.filter-drawer-icon svg {
+    width: 1.15rem;
+    height: 1.15rem;
+}
+.filter-drawer-title {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #004B93;
+    line-height: 1.2;
+}
+.filter-drawer-subtitle {
+    margin-top: 0.15rem;
+    font-size: 0.8rem;
+    color: #6b7280;
+    line-height: 1.3;
+}
+.filter-drawer-close {
+    flex-shrink: 0;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 999px;
+    background: #f3f4f6;
+    color: #4b5563;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.filter-drawer-close svg {
+    width: 0.95rem;
+    height: 0.95rem;
+}
+.filter-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+.filter-panel-heading {
+    font-weight: 700;
+    color: #004B93;
+}
+.filter-clear-all {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-left: auto;
+    color: #ff7d00;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+.filter-clear-all svg {
+    width: 0.9rem;
+    height: 0.9rem;
+}
+.filter-group-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #004B93;
+    line-height: 1.3;
+}
+.filter-group-hint {
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin: 0.15rem 0 0.6rem;
+}
+#filter-drawer .filter-panel-heading {
+    display: none;
+}
+#filter-drawer .filter-toolbar {
+    justify-content: flex-end;
+    margin-bottom: 0.25rem;
 }
 html.filters-open,
 body.filters-open {
@@ -1695,7 +1820,18 @@ body.cart-open {
     opacity: 1;
 }
 
-/* Checkout fulfillment dropdown (reuse pack-dd, blue labels) */
+#checkout-form .checkout-field {
+    box-sizing: border-box;
+    outline: none;
+    box-shadow: none;
+    -webkit-appearance: none;
+    appearance: none;
+}
+#checkout-form .checkout-field:focus {
+    border-color: #ff7d00;
+    box-shadow: none;
+    outline: none;
+}
 .fulfillment-dd {
     flex: none;
     width: 100%;
@@ -2078,6 +2214,9 @@ body.lightbox-open {
 .lightbox > button[aria-label="Close"] {
     z-index: 5;
 }
+#pdp-stage {
+    touch-action: pan-y;
+}
 #lightbox-media {
     width: min(920px, 100%);
     max-width: 100%;
@@ -2085,6 +2224,7 @@ body.lightbox-open {
     display: flex;
     align-items: center;
     justify-content: center;
+    touch-action: pan-y;
 }
 #lightbox-media:has(.pdp-video-lightbox.is-vertical) {
     width: auto;

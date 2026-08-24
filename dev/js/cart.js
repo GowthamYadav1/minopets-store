@@ -254,6 +254,8 @@ function updateCartUI(justAdded = false) {
     const badge = document.getElementById('cart-badge');
     const mobileBar = document.getElementById('mobile-cart-bar');
     document.getElementById('mobile-cart-count').innerText = totalItems;
+    const noun = document.getElementById('mobile-cart-noun');
+    if (noun) noun.innerText = totalItems === 1 ? 'item' : 'items';
 
     if (totalItems > 0) {
         badge.innerText = totalItems;

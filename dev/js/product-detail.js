@@ -136,23 +136,94 @@ function openDriveVideoOnPhone(driveId) {
 function setPdpMedia(index) {
     if (!pdpMedia.length) return;
     pdpMediaIndex = Math.max(0, Math.min(index, pdpMedia.length - 1));
-    const stage = document.getElementById('pdp-stage');
-    const isVideo = pdpMedia[pdpMediaIndex]?.type === 'video';
-    if (stage) {
-        stage.innerHTML = renderPdpMainMedia({ autoplay: isVideo });
-    }
-    document.querySelectorAll('#pdp-thumbs .thumb').forEach((t, i) => {
-        t.classList.toggle('is-active', i === pdpMediaIndex);
-    });
+    paintPdpStageMedia();
 
-    if (isVideo) {
+    if (pdpMedia[pdpMediaIndex]?.type === 'video') {
         playPdpVideo();
     } else {
         closePdpLightbox();
     }
 }
 
+function paintPdpStageMedia() {
+    const stage = document.getElementById('pdp-stage');
+    if (stage) {
+        stage.innerHTML = renderPdpMainMedia({
+            autoplay: pdpMedia[pdpMediaIndex]?.type === 'video'
+        });
+    }
+    document.querySelectorAll('#pdp-thumbs .thumb').forEach((t, i) => {
+        t.classList.toggle('is-active', i === pdpMediaIndex);
+    });
+}
+
+/** Swipe through photos only (skip video). Returns true if the index changed. */
+function stepPdpGallery(delta) {
+    if (pdpMedia.length < 2) return false;
+    let next = pdpMediaIndex;
+    for (let n = 0; n < pdpMedia.length; n++) {
+        next = (next + delta + pdpMedia.length) % pdpMedia.length;
+        if (pdpMedia[next]?.type === 'image') {
+            if (next === pdpMediaIndex) return false;
+            pdpMediaIndex = next;
+            paintPdpStageMedia();
+            const lb = document.getElementById('lightbox');
+            if (lb?.classList.contains('is-open')) {
+                const box = document.getElementById('lightbox-media');
+                const m = pdpMedia[pdpMediaIndex];
+                if (box && m?.type === 'image') box.innerHTML = `<img src="${m.src}" alt="">`;
+            }
+            return true;
+        }
+    }
+    return false;
+}
+
+let pdpSwipeIgnoreClick = false;
+
+function bindHorizontalSwipe(el, onLeft, onRight) {
+    if (!el || el.dataset.swipeBound === '1') return;
+    el.dataset.swipeBound = '1';
+    let startX = 0;
+    let startY = 0;
+    let tracking = false;
+
+    el.addEventListener('touchstart', (e) => {
+        if (e.touches.length !== 1) return;
+        tracking = true;
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+    }, { passive: true });
+
+    el.addEventListener('touchend', (e) => {
+        if (!tracking) return;
+        tracking = false;
+        const t = e.changedTouches[0];
+        const dx = t.clientX - startX;
+        const dy = t.clientY - startY;
+        if (Math.abs(dx) < 48 || Math.abs(dx) <= Math.abs(dy)) return;
+        pdpSwipeIgnoreClick = true;
+        setTimeout(() => { pdpSwipeIgnoreClick = false; }, 400);
+        if (dx < 0) onLeft();
+        else onRight();
+    }, { passive: true });
+}
+
+function bindPdpGallerySwipe() {
+    bindHorizontalSwipe(
+        document.getElementById('pdp-stage'),
+        () => stepPdpGallery(1),
+        () => stepPdpGallery(-1)
+    );
+    bindHorizontalSwipe(
+        document.getElementById('lightbox-media'),
+        () => stepPdpGallery(1),
+        () => stepPdpGallery(-1)
+    );
+}
+
 function openPdpLightbox(opts = {}) {
+    if (pdpSwipeIgnoreClick) return;
     const m = pdpMedia[pdpMediaIndex];
     if (!m) return;
     const box = document.getElementById('lightbox-media');
@@ -283,7 +354,7 @@ function paintProductDetailBody(product, { galleryPending = false } = {}) {
 
     const galleryHint = pdpMedia.length > 1
         ? `<div id="pdp-thumbs" class="flex gap-2 mt-2.5 overflow-x-auto pb-1">${thumbs}</div>
-           <p class="text-xs text-slate-400 mt-1.5">Tap a photo to enlarge · tap video to play</p>`
+           <p class="text-xs text-slate-400 mt-1.5">Swipe photos · tap to enlarge · tap video to play</p>`
         : (galleryPending
             ? `<p id="pdp-gallery-pending" class="text-xs text-slate-400 mt-2">Loading more photos…</p>`
             : '');
@@ -310,6 +381,7 @@ function paintProductDetailBody(product, { galleryPending = false } = {}) {
     if (typeof bindPdpVideoLoading === 'function') {
         bindPdpVideoLoading(document.getElementById('pdp-stage'));
     }
+    bindPdpGallerySwipe();
     return buy.hasPacks;
 }
 
@@ -336,11 +408,12 @@ function applyPdpGalleryUpdate(product, gallery) {
         </div>
         ${pdpMedia.length > 1 ? `
             <div id="pdp-thumbs" class="flex gap-2 mt-2.5 overflow-x-auto pb-1">${thumbs}</div>
-            <p class="text-xs text-slate-400 mt-1.5">Tap a photo to enlarge · tap video to play</p>
+            <p class="text-xs text-slate-400 mt-1.5">Swipe photos · tap to enlarge · tap video to play</p>
         ` : ''}`;
     if (typeof bindPdpVideoLoading === 'function') {
         bindPdpVideoLoading(document.getElementById('pdp-stage'));
     }
+    bindPdpGallerySwipe();
 }
 
 async function openProductDetail(productId) {
