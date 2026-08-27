@@ -185,13 +185,17 @@ function updateCartUI(justAdded = false) {
         `;
     }
 
-    cartItemsContainer.innerHTML = itemsHtml || '<p class="text-gray-400 italic text-sm py-4 text-center">Your cart is empty.</p>';
+    cartItemsContainer.innerHTML = itemsHtml;
+    const cartEmpty = !itemsHtml;
+    cartItemsContainer.classList.toggle('hidden', cartEmpty);
+    document.getElementById('cart-items-heading')?.classList.toggle('hidden', cartEmpty);
+    document.getElementById('cart-empty-state')?.classList.toggle('hidden', !cartEmpty);
 
     const subtotal = getCartSubtotal();
     const fulfillment = document.getElementById('fulfillment')?.value || '';
     const shipping = getShippingFee(subtotal, fulfillment);
     const discount = (typeof getAppliedCouponDiscount === 'function')
-        ? getAppliedCouponDiscount(subtotal + shipping)
+        ? getAppliedCouponDiscount(subtotal, subtotal + shipping)
         : 0;
     const total = Math.max(0, subtotal + shipping - discount);
 
@@ -314,6 +318,11 @@ function closeCartPanel(opts = {}) {
     const panel = document.getElementById('cart-panel');
     const overlay = document.getElementById('cart-overlay');
     if (!panel || panel.classList.contains('hidden')) return;
+    if (typeof closeAddressSuggestions === 'function') closeAddressSuggestions();
+    if (typeof lastPlacedOrder !== 'undefined' && lastPlacedOrder?.status === 'paid'
+        && typeof resetCheckoutForm === 'function') {
+        resetCheckoutForm();
+    }
     panel.classList.add('translate-x-full');
     overlay?.classList.add('hidden');
     unlockBodyScroll();

@@ -136,5 +136,7 @@ window.ModalHistory = {
         else if (id === 'filters' && typeof closeFilterDrawer === 'function') closeFilterDrawer(opts);
         else if (id === 'cart' && typeof closeCartPanel === 'function') closeCartPanel(opts);
         else if (id === 'nav' && typeof closeMobileNav === 'function') closeMobileNav(opts);
+        else if (id === 'auth' && typeof closeAuthModal === 'function') closeAuthModal(opts);
+        else if (id === 'orders' && typeof closeOrdersPanel === 'function') closeOrdersPanel(opts);
     },
 };

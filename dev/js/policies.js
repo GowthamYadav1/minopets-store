@@ -1,5 +1,5 @@
 /**
- * Footer policy modals: Shipping, Live Arrival Guarantee, Refund & Cancellation, Care Guides.
+ * Footer policy modals: Shipping, Live Arrival Guarantee, Refund & Cancellation, Privacy, Care Guides.
  */
 
 const POLICY_WHATSAPP = 'https://wa.me/919035559089';
@@ -183,6 +183,52 @@ const POLICIES = {
             </ul>
 
             <p class="policy-note">Questions? <a href="${POLICY_WHATSAPP}?text=${encodeURIComponent('Hi Mino Pets, I need help with a refund or cancellation.')}" target="_blank" rel="noopener">Chat with us on WhatsApp</a>.</p>
+        `,
+    },
+    privacy: {
+        title: 'Privacy Policy',
+        body: `
+            <p>Mino Pets respects your privacy. This policy explains what we collect when you shop with us, why we use it, and how you can reach us.</p>
+
+            <h3>Information we collect</h3>
+            <ul>
+                <li>Account details you provide: name, email, phone number, and saved delivery addresses.</li>
+                <li>Order details: items purchased, fulfilment method, payment status, and pickup or delivery notes.</li>
+                <li>Sign-in information if you use Google, email, or phone OTP (handled by Firebase Authentication).</li>
+                <li>Messages you send us on WhatsApp, email, or the website.</li>
+            </ul>
+
+            <h3>How we use it</h3>
+            <ul>
+                <li>To create and manage your account, cart, and orders.</li>
+                <li>To process payments (via Razorpay) and confirm paid orders.</li>
+                <li>To arrange Self Pickup or Home Delivery and contact you about stock, delays, or live-arrival claims.</li>
+                <li>To send order updates by WhatsApp or email when needed.</li>
+                <li>To improve the shop experience (for example, saved addresses and order history).</li>
+            </ul>
+
+            <h3>Who we share it with</h3>
+            <ul>
+                <li>Payment provider (Razorpay) to complete checkout — we do not store your full card or UPI PIN.</li>
+                <li>Delivery or porter partners when you choose Home Delivery, so they can reach you.</li>
+                <li>Google Firebase and Google Sheets services that run our shop backend.</li>
+                <li>We do <strong>not</strong> sell your personal information.</li>
+            </ul>
+
+            <h3>Cookies and local storage</h3>
+            <ul>
+                <li>The site may store a cart, catalog cache, and sign-in session on your device so the shop works faster.</li>
+                <li>You can clear this data in your browser; you may need to sign in again.</li>
+            </ul>
+
+            <h3>Your choices</h3>
+            <ul>
+                <li>You can update your name, phone, and addresses from your account and checkout.</li>
+                <li>To review, correct, or delete account data, WhatsApp us with the email or phone on your account.</li>
+                <li>You can close your account by contacting us; we may keep order records as required for payments, tax, or disputes.</li>
+            </ul>
+
+            <p class="policy-note">Questions about privacy? <a href="${POLICY_WHATSAPP}?text=${encodeURIComponent('Hi Mino Pets, I have a privacy question.')}" target="_blank" rel="noopener">Chat with us on WhatsApp</a>.</p>
         `,
     },
     'care-guides': {

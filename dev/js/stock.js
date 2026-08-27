@@ -4,6 +4,7 @@ function getAvailableStock(productId) {
 }
 
 function isStockApiConfigured() {
+    if (typeof minoFunctionsEnabled === 'function' && minoFunctionsEnabled()) return true;
     return !!(MINO_API?.baseUrl && !String(MINO_API.baseUrl).includes('PASTE_'));
 }
 
@@ -339,8 +340,10 @@ function persistStockCache() {
 }
 
 async function loadStock(force = false) {
-    if (!MINO_API?.baseUrl || String(MINO_API.baseUrl).includes('PASTE_')) {
-        console.warn('[stock] MINO_API.baseUrl not set — using products.js inStock only');
+    const useFirebase = typeof minoFunctionsEnabled === 'function' && minoFunctionsEnabled();
+    const sheetsConfigured = !!(MINO_API?.baseUrl && !String(MINO_API.baseUrl).includes('PASTE_'));
+    if (!useFirebase && !sheetsConfigured) {
+        console.warn('[stock] no stock API configured — using products.js inStock only');
         return false;
     }
 
@@ -350,8 +353,13 @@ async function loadStock(force = false) {
         return true;
     }
 
-    const sep = MINO_API.baseUrl.includes('?') ? '&' : '?';
-    const url = `${MINO_API.baseUrl}${sep}action=getStock&token=${encodeURIComponent(MINO_API.token)}&origin=${encodeURIComponent(minoStoreOrigin())}`;
+    let url;
+    if (useFirebase) {
+        url = `${MINO_FIREBASE.functionsBase}/getStock`;
+    } else {
+        const sep = MINO_API.baseUrl.includes('?') ? '&' : '?';
+        url = `${MINO_API.baseUrl}${sep}action=getStock&token=${encodeURIComponent(MINO_API.token)}&origin=${encodeURIComponent(minoStoreOrigin())}`;
+    }
 
     try {
         const res = await fetch(url, { method: 'GET', redirect: 'follow' });
@@ -363,10 +371,16 @@ async function loadStock(force = false) {
         applyStockToProducts();
         clampCartToStock();
         persistStockCache();
-        console.log('[stock] loaded', Object.keys(AppState.stock).length, 'skus', AppState.stock);
+        console.log(
+            '[stock] loaded from',
+            useFirebase ? 'Firebase' : 'Sheets',
+            Object.keys(AppState.stock).length,
+            'skus',
+            AppState.stock
+        );
         return true;
     } catch (err) {
-        console.error('[stock] fetch failed — qty capped until stock loads. Check Config allowed_origins + console.', err);
+        console.error('[stock] fetch failed — keeping the last known stock.', err);
         return false;
     }
 }

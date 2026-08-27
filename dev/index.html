@@ -37,8 +37,37 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/store.css">
+    <noscript><style>.store-loader { display: none; }</style></noscript>
 </head>
 <body class="bg-[#F8FAFC] font-sans min-h-screen overflow-x-hidden antialiased flex flex-col">
+
+    <svg width="0" height="0" class="hidden" aria-hidden="true" focusable="false">
+        <symbol id="mino-loader-fish" viewBox="0 0 32 20">
+            <path fill="currentColor" d="M20.6 2.2c-5.4 0-10 2.9-12.4 7.2-.3.4-.3 1 0 1.4 2.4 4.3 7 7.2 12.4 7.2 4.4 0 8.2-2.1 10.5-5.4.4-.5.4-1.2 0-1.7-2.3-3.4-6.1-8.7-10.5-8.7z"/>
+            <path fill="currentColor" d="M6.9 10.1 1.2 4.6c-.6-.6-1.6 0-1.4.8l1.3 4.7-1.3 4.7c-.2.8.8 1.4 1.4.8l5.7-5.5z" opacity=".75"/>
+            <circle cx="25" cy="8.4" r="1.5" fill="#fff"/>
+        </symbol>
+    </svg>
+    <div id="store-loader" class="store-loader" role="status" aria-live="polite" aria-label="Loading the Mino Pets store">
+        <div class="store-loader-stage">
+            <span class="store-loader-ring" aria-hidden="true"></span>
+            <img src="/assets/logo.png" alt="" class="store-loader-logo"
+                onerror="this.style.display='none'; this.nextElementSibling.style.display='block'">
+            <span class="store-loader-wordmark" aria-hidden="true">MINO</span>
+            <div class="store-loader-orbit" aria-hidden="true">
+                <svg class="store-loader-fish" viewBox="0 0 32 20"><use href="#mino-loader-fish"/></svg>
+                <svg class="store-loader-fish" viewBox="0 0 32 20"><use href="#mino-loader-fish"/></svg>
+                <svg class="store-loader-fish" viewBox="0 0 32 20"><use href="#mino-loader-fish"/></svg>
+            </div>
+        </div>
+        <p class="store-loader-text">Filling the tank…</p>
+    </div>
+    <script>
+        // Last resort: never trap the storefront behind the loader if a script fails.
+        setTimeout(function () {
+            document.getElementById('store-loader')?.classList.add('is-hidden');
+        }, 10000);
+    </script>
 
     <header class="sticky top-0 z-40 shadow-md">
         <div class="bg-white border-b border-gray-200">
@@ -70,6 +99,28 @@
                     <button type="button" id="mobile-search-toggle" class="md:hidden flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-brand-blue text-white hover:bg-brand-blue-dark shadow-sm" onclick="toggleMobileSearch()" aria-label="Search" aria-expanded="false" aria-controls="mobile-search-panel">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                     </button>
+                    <div id="header-account-wrap" class="relative flex-shrink-0">
+                        <div id="header-auth-signed-out" class="flex items-center">
+                        <button type="button" id="header-auth-guest" onclick="showAuthModal('login')"
+                            class="hidden sm:inline-flex items-center gap-1 text-brand-blue hover:text-brand-coral font-semibold text-sm px-2 py-1.5 rounded-lg">
+                            Sign in
+                        </button>
+                        <button type="button" id="header-auth-guest-icon" onclick="showAuthModal('login')"
+                            class="sm:hidden w-10 h-10 flex items-center justify-center text-brand-blue rounded-lg hover:bg-slate-100 overflow-visible leading-none" aria-label="Sign in">
+                            <svg class="w-5 h-5 shrink-0 block overflow-visible" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
+                        </button>
+                        </div>
+                        <button type="button" id="header-auth-user" onclick="toggleAccountMenu(event)"
+                            class="hidden items-center gap-1.5 text-brand-blue hover:bg-slate-50 rounded-lg px-1.5 py-1">
+                            <span id="header-auth-avatar" class="w-8 h-8 rounded-full bg-brand-blue text-white text-xs font-bold flex items-center justify-center overflow-hidden"></span>
+                            <span id="header-auth-name" class="hidden lg:inline font-semibold text-sm max-w-[7rem] truncate"></span>
+                        </button>
+                        <div id="account-menu" class="hidden absolute right-0 top-full mt-1 w-44 bg-white border border-gray-200 rounded-xl shadow-lg py-1 z-50">
+                            <button type="button" onclick="showMyAccount()" class="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-coral transition-colors">My account</button>
+                            <button type="button" onclick="openOrdersPanel()" class="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-coral transition-colors">My orders</button>
+                            <button type="button" onclick="signOutMino()" class="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-coral transition-colors">Sign out</button>
+                        </div>
+                    </div>
                     <button onclick="toggleCart()" class="flex items-center gap-1.5 text-brand-blue hover:text-brand-coral transition-colors flex-shrink-0 relative">
                         <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
                         <span class="hidden lg:inline font-semibold text-sm">Cart</span>
@@ -300,71 +351,180 @@
                 </path>
             </svg>
         </div>
-        <div class="bg-brand-blue text-white overflow-x-hidden">
-            <div class="max-w-shell mx-auto px-4 lg:px-8 py-3 sm:py-5 grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-3 sm:gap-y-5 lg:gap-4">
-                <div class="col-span-2 lg:col-span-1 flex items-start justify-between gap-3">
+        <div class="footer-main bg-brand-blue text-white overflow-x-hidden">
+            <div class="footer-body">
+            <div class="footer-inner max-w-shell mx-auto px-4 lg:px-8 py-3 sm:py-5 grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-3 sm:gap-y-5 lg:gap-8">
+                <div class="footer-brand col-span-2 lg:col-span-1 flex items-start justify-between gap-3">
                     <div class="min-w-0">
-                        <a href="." onclick="navigateTo('home'); return false;" class="inline-block bg-white rounded-md px-2 py-1">
+                        <a href="." onclick="navigateTo('home'); return false;" class="footer-logo inline-block bg-white rounded-md px-2 py-1">
                             <img src="/assets/logo.png" alt="Mino Pets" class="h-6 sm:h-7 w-auto object-contain">
                         </a>
-                        <p class="hidden sm:block text-xs text-white/60 leading-relaxed mt-2 max-w-xs">Premium livestock, hardy shrimp, and curated aquascaping essentials.</p>
-                        <div class="flex gap-2 mt-2 sm:mt-3">
-                            <a href="https://facebook.com" target="_blank" rel="noopener" aria-label="Facebook" class="footer-social w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/10 flex items-center justify-center text-white/80">
-                                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                        <p class="footer-tagline hidden lg:block text-xs text-white/60 leading-relaxed mt-2 max-w-xs">Premium livestock, hardy shrimp, and curated aquascaping essentials.</p>
+                        <p class="footer-follow-label hidden lg:block">Follow us</p>
+                        <div class="footer-socials flex gap-2 mt-2 sm:mt-3">
+                            <a href="https://facebook.com" target="_blank" rel="noopener" aria-label="Facebook" class="footer-social footer-social--brand w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/10 flex items-center justify-center">
+                                <img src="/assets/icons/footer/facebook.png" alt="" class="w-4 h-4 sm:w-[1.15rem] sm:h-[1.15rem] object-contain">
                             </a>
-                            <a href="https://youtube.com" target="_blank" rel="noopener" aria-label="YouTube" class="footer-social w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/10 flex items-center justify-center text-white/80">
-                                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                            <a href="https://youtube.com" target="_blank" rel="noopener" aria-label="YouTube" class="footer-social footer-social--brand w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/10 flex items-center justify-center">
+                                <img src="/assets/icons/footer/youtube.png" alt="" class="w-4 h-4 sm:w-[1.15rem] sm:h-[1.15rem] object-contain">
                             </a>
-                            <a href="https://instagram.com/minopets.official" target="_blank" rel="noopener" aria-label="Instagram" class="footer-social w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/10 flex items-center justify-center text-white/80">
-                                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+                            <a href="https://instagram.com/minopets.official" target="_blank" rel="noopener" aria-label="Instagram" class="footer-social footer-social--brand w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/10 flex items-center justify-center">
+                                <img src="/assets/icons/footer/instagram.png" alt="" class="w-4 h-4 sm:w-[1.15rem] sm:h-[1.15rem] object-contain">
                             </a>
                             <a href="https://wa.me/919035559089?text=Hi%20Mino%20Pets%2C%20I%20need%20help%20with%20my%20order." target="_blank" rel="noopener" aria-label="WhatsApp" class="footer-social footer-social--wa w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/10 flex items-center justify-center">
-                                <img src="/assets/icons/whatsapp.png" alt="" class="w-4 h-4 sm:w-[1.15rem] sm:h-[1.15rem] object-contain">
+                                <img src="/assets/icons/footer/whatsapp.png" alt="" class="w-4 h-4 sm:w-[1.15rem] sm:h-[1.15rem] object-contain">
                             </a>
                         </div>
                     </div>
                     <a href="https://wa.me/919035559089?text=Hi%20Mino%20Pets%2C%20I%20need%20help%20with%20my%20order." target="_blank" rel="noopener"
-                        class="sm:hidden chat-sonar flex-shrink-0 inline-flex items-center gap-1.5 bg-brand-coral hover:bg-brand-coral-dark text-white font-bold px-3.5 py-2 rounded-full text-xs shadow-md">
-                        <img src="/assets/icons/whatsapp.png" alt="" class="w-4 h-4 object-contain">
-                        Chat
+                        class="footer-chat-pill lg:hidden chat-sonar flex-shrink-0 inline-flex items-center gap-2 bg-brand-coral hover:bg-brand-coral-dark text-white font-bold rounded-full shadow-md">
+                        <img src="/assets/icons/footer/whatsapp.png" alt="" class="object-contain">
+                        Chat Now
                     </a>
                 </div>
                 <div>
                     <h3 class="footer-heading text-xs uppercase tracking-widest text-white/50 font-semibold mb-1.5 sm:mb-3">Explore</h3>
-                    <ul class="footer-links flex flex-col space-y-1 sm:space-y-2 text-xs sm:text-sm">
-                        <li><button onclick="footerFilter('Fish')" class="footer-link">Fishes</button></li>
-                        <li><button onclick="footerFilter('Shrimps')" class="footer-link">Shrimps</button></li>
-                        <li><button onclick="footerFilter('Plants')" class="footer-link">Plants</button></li>
-                        <li><button onclick="footerFilter('Accessories')" class="footer-link">Accessories</button></li>
-                        <li><button onclick="footerFilter('Aquarium')" class="footer-link">Aquarium</button></li>
+                    <ul class="footer-links flex flex-col text-xs sm:text-sm">
+                        <li><button onclick="footerFilter('Fish')" class="footer-link">
+                            <svg class="footer-link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12c0 2.8-3.4 5-6.6 5-2.6 0-4.9-1.4-6.4-3.4a1 1 0 010-1.2C5 10.4 7.3 9 9.9 9c3.2 0 6.6 2.2 6.6 3z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12l4 3V9l-4 3z"/><circle cx="7.5" cy="11.6" r=".9" fill="currentColor" stroke="none"/></svg>
+                            <span class="footer-link-text">Fishes</span>
+                        </button></li>
+                        <li><button onclick="footerFilter('Shrimps')" class="footer-link">
+                            <svg class="footer-link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7c-5.5 0-9 2.2-9 5.5S13 18 17 18M19 7c-3 0-3.5 3-6 3.5M10 12.5c-2.5 0-4.5-1-5.5-2.5M10 15c-2 .5-3.5 1.5-4.5 3"/><circle cx="18.6" cy="7.4" r=".9" fill="currentColor" stroke="none"/></svg>
+                            <span class="footer-link-text">Shrimps</span>
+                        </button></li>
+                        <li><button onclick="footerFilter('Plants')" class="footer-link">
+                            <svg class="footer-link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21V9M12 9c0-3 1.5-5.5 4-6.5.5 3-.7 5.7-4 6.5zM12 12c-.3-2.8-2-4.8-4.5-5.3.2 2.8 1.6 4.8 4.5 5.3zM12 16c2.6-.3 4.4-1.8 5-4-2.6.1-4.5 1.4-5 4z"/></svg>
+                            <span class="footer-link-text">Plants</span>
+                        </button></li>
+                        <li><button onclick="footerFilter('Accessories')" class="footer-link">
+                            <svg class="footer-link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14l-1 12H6L5 8zM9 8V6a3 3 0 016 0v2"/></svg>
+                            <span class="footer-link-text">Accessories</span>
+                        </button></li>
+                        <li><button onclick="footerFilter('Aquarium')" class="footer-link">
+                            <svg class="footer-link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2"/><path stroke-linecap="round" d="M3 13c2-1.6 3.6-1.6 5.5 0s3.6 1.6 5.5 0 3.5-1.6 4.9-.4"/></svg>
+                            <span class="footer-link-text">Aquarium</span>
+                        </button></li>
                     </ul>
                 </div>
                 <div>
                     <h3 class="footer-heading text-xs uppercase tracking-widest text-white/50 font-semibold mb-1.5 sm:mb-3">Support</h3>
-                    <ul class="footer-links flex flex-col space-y-1 sm:space-y-2 text-xs sm:text-sm">
-                        <li><button type="button" onclick="openPolicy('live-arrival')" class="footer-link inline-flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0"></span><span class="sm:hidden">Live Guarantee</span><span class="hidden sm:inline">Live Arrival Guarantee</span></button></li>
-                        <li><button type="button" onclick="openPolicy('shipping')" class="footer-link"><span class="sm:hidden">Shipping</span><span class="hidden sm:inline">Shipping Policy</span></button></li>
-                        <li><button type="button" onclick="openPolicy('refund')" class="footer-link"><span class="sm:hidden">Refunds</span><span class="hidden sm:inline">Refund &amp; Cancellation Policy</span></button></li>
-                        <li><a href="https://wa.me/919035559089?text=Hi%20Mino%20Pets%2C%20I%20want%20to%20track%20my%20order." target="_blank" rel="noopener" class="footer-link"><span class="sm:hidden">Track Order</span><span class="hidden sm:inline">Track Your Order</span></a></li>
-                        <li><button type="button" onclick="openPolicy('care-guides')" class="footer-link">Care Guides</button></li>
+                    <ul class="footer-links flex flex-col text-xs sm:text-sm">
+                        <li><button type="button" onclick="openPolicy('live-arrival')" class="footer-link">
+                            <svg class="footer-link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3l7 3v5.5c0 4.3-3 7.7-7 9-4-1.3-7-4.7-7-9V6l7-3z"/><path stroke-linecap="round" stroke-linejoin="round" d="M9.2 12.2l2 2 3.6-3.8"/></svg>
+                            <span class="footer-link-text"><span class="lg:hidden">Live Guarantee</span><span class="hidden lg:inline">Live Arrival Guarantee</span></span>
+                        </button></li>
+                        <li><button type="button" onclick="openPolicy('shipping')" class="footer-link">
+                            <svg class="footer-link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M2.5 7.5h10v9h-10v-9zM12.5 11h4l3 2.5v3h-7"/><circle cx="6" cy="18" r="1.6"/><circle cx="16.5" cy="18" r="1.6"/></svg>
+                            <span class="footer-link-text"><span class="lg:hidden">Shipping</span><span class="hidden lg:inline">Shipping Policy</span></span>
+                        </button></li>
+                        <li><button type="button" onclick="openPolicy('refund')" class="footer-link">
+                            <svg class="footer-link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 12a8 8 0 1113 6.2M4 12V7m0 5h5"/></svg>
+                            <span class="footer-link-text"><span class="lg:hidden">Refunds</span><span class="hidden lg:inline">Refund &amp; Cancellation Policy</span></span>
+                        </button></li>
+                        <li><button type="button" onclick="openPolicy('privacy')" class="footer-link">
+                            <svg class="footer-link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path stroke-linecap="round" d="M8.5 10.5V7.8a3.5 3.5 0 017 0v2.7"/></svg>
+                            <span class="footer-link-text">Privacy Policy</span>
+                        </button></li>
+                        <li><a href="https://wa.me/919035559089?text=Hi%20Mino%20Pets%2C%20I%20want%20to%20track%20my%20order." target="_blank" rel="noopener" class="footer-link">
+                            <svg class="footer-link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3l8 4.2v9.6L12 21l-8-4.2V7.2L12 3z"/><path stroke-linecap="round" stroke-linejoin="round" d="M4 7.2l8 4.3 8-4.3M12 11.5V21"/></svg>
+                            <span class="footer-link-text"><span class="lg:hidden">Track Order</span><span class="hidden lg:inline">Track Your Order</span></span>
+                        </a></li>
+                        <li><button type="button" onclick="openPolicy('care-guides')" class="footer-link">
+                            <svg class="footer-link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.5C10.5 5 8.5 4.5 4.5 4.5v13c4 0 6 .5 7.5 2 1.5-1.5 3.5-2 7.5-2v-13c-4 0-6 .5-7.5 2zM12 6.5v13"/></svg>
+                            <span class="footer-link-text">Care Guides</span>
+                        </button></li>
                     </ul>
                 </div>
-                <div class="hidden sm:block lg:col-span-1">
+                <ul class="footer-trust-strip col-span-2 lg:hidden">
+                    <li>
+                        <span class="footer-trust-strip-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="9.5" r="5"/><path stroke-linecap="round" stroke-linejoin="round" d="M8.5 13.8L7.5 21l4.5-2.3L16.5 21l-1-7.2"/></svg>
+                        </span>
+                        <strong>Quality Assured</strong>
+                        <span>Premium livestock</span>
+                    </li>
+                    <li>
+                        <span class="footer-trust-strip-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3l7 3v5.5c0 4.3-3 7.7-7 9-4-1.3-7-4.7-7-9V6l7-3z"/><path stroke-linecap="round" stroke-linejoin="round" d="M9.2 12.2l2 2 3.6-3.8"/></svg>
+                        </span>
+                        <strong>Live Guarantee</strong>
+                        <span>Safe arrival</span>
+                    </li>
+                    <li>
+                        <span class="footer-trust-strip-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3l8 4.2v9.6L12 21l-8-4.2V7.2L12 3z"/><path stroke-linecap="round" stroke-linejoin="round" d="M4 7.2l8 4.3 8-4.3M12 11.5V21"/></svg>
+                        </span>
+                        <strong>Secure Packaging</strong>
+                        <span>Damage protection</span>
+                    </li>
+                    <li>
+                        <span class="footer-trust-strip-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path stroke-linecap="round" d="M4.5 14v-2a7.5 7.5 0 0115 0v2"/><rect x="3" y="13.5" width="3.5" height="5.5" rx="1.5"/><rect x="17.5" y="13.5" width="3.5" height="5.5" rx="1.5"/><path stroke-linecap="round" d="M17.5 19a3.5 3.5 0 01-3.5 2.5h-2"/></svg>
+                        </span>
+                        <strong>Expert Support</strong>
+                        <span>Always here to help</span>
+                    </li>
+                </ul>
+                <div class="footer-connect hidden lg:block">
                     <h3 class="footer-heading text-xs uppercase tracking-widest text-white/50 font-semibold mb-3">Connect</h3>
-                    <a href="https://wa.me/919035559089?text=Hi%20Mino%20Pets%2C%20I%20need%20help%20with%20my%20order." target="_blank" rel="noopener"
-                        class="chat-sonar inline-flex items-center gap-2 bg-brand-coral hover:bg-brand-coral-dark text-white font-bold px-5 py-2.5 rounded-full text-sm transition-colors duration-300 shadow-md">
-                        <img src="/assets/icons/whatsapp.png" alt="" class="w-5 h-5 object-contain">
-                        Chat Now
+                    <a href="https://wa.me/919035559089?text=Hi%20Mino%20Pets%2C%20I%20need%20help%20with%20my%20order." target="_blank" rel="noopener" class="footer-connect-card">
+                        <span class="footer-connect-icon chat-sonar">
+                            <img src="/assets/icons/footer/whatsapp.png" alt="" class="w-6 h-6 object-contain">
+                        </span>
+                        <span class="footer-connect-copy">
+                            <strong>Chat with us on WhatsApp</strong>
+                            <span>Get quick help for orders, products &amp; more.</span>
+                        </span>
                     </a>
+                    <ul class="footer-trust">
+                        <li>
+                            <span class="footer-trust-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="9.5" r="5"/><path stroke-linecap="round" stroke-linejoin="round" d="M8.5 13.8L7.5 21l4.5-2.3L16.5 21l-1-7.2"/></svg>
+                            </span>
+                            <span class="footer-trust-copy">
+                                <strong>Quality Assured</strong>
+                                <span>Healthy &amp; premium livestock</span>
+                            </span>
+                        </li>
+                        <li>
+                            <span class="footer-trust-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3l8 4.2v9.6L12 21l-8-4.2V7.2L12 3z"/><path stroke-linecap="round" stroke-linejoin="round" d="M4 7.2l8 4.3 8-4.3M12 11.5V21"/></svg>
+                            </span>
+                            <span class="footer-trust-copy">
+                                <strong>Live Arrival Guarantee</strong>
+                                <span>Safe packaging, on-time delivery</span>
+                            </span>
+                        </li>
+                        <li>
+                            <span class="footer-trust-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path stroke-linecap="round" d="M4.5 14v-2a7.5 7.5 0 0115 0v2"/><rect x="3" y="13.5" width="3.5" height="5.5" rx="1.5"/><rect x="17.5" y="13.5" width="3.5" height="5.5" rx="1.5"/><path stroke-linecap="round" d="M17.5 19a3.5 3.5 0 01-3.5 2.5h-2"/></svg>
+                            </span>
+                            <span class="footer-trust-copy">
+                                <strong>Expert Support</strong>
+                                <span>Aquascaping help whenever you need</span>
+                            </span>
+                        </li>
+                    </ul>
                 </div>
+            </div>
             </div>
             <div class="border-t border-white/10 bg-brand-blue-dark">
                 <div class="max-w-shell mx-auto px-4 lg:px-8 py-2 sm:py-3 flex flex-row items-center justify-between gap-2 text-[10px] sm:text-xs text-white/50">
-                    <p><span class="sm:hidden">© 2026 Mino Pets</span><span class="hidden sm:inline">© 2026 Mino Pets. All rights reserved.</span></p>
-                    <div class="flex items-center gap-2 text-white/40">
-                        <span class="px-2 py-0.5 border border-white/20 rounded text-[10px] font-medium">UPI</span>
-                        <span class="px-2 py-0.5 border border-white/20 rounded text-[10px] font-medium">VISA</span>
-                        <span class="px-2 py-0.5 border border-white/20 rounded text-[10px] font-medium">MC</span>
+                    <p class="footer-copy">
+                        <span class="footer-copy-line">© 2026 Mino Pets.</span>
+                        <span class="footer-copy-rights">All rights reserved.</span>
+                    </p>
+                    <div class="flex items-center gap-1.5 sm:gap-2">
+                        <span class="footer-pay">
+                            <img src="/assets/icons/footer/upi.png" alt="UPI" width="191" height="56" loading="lazy" decoding="async">
+                        </span>
+                        <span class="footer-pay">
+                            <img src="/assets/icons/footer/visa.png" alt="Visa" width="180" height="56" loading="lazy" decoding="async">
+                        </span>
+                        <span class="footer-pay footer-pay--mc">
+                            <img src="/assets/icons/footer/mastercard.png" alt="Mastercard" width="72" height="56" loading="lazy" decoding="async">
+                        </span>
                     </div>
                 </div>
             </div>
@@ -378,178 +538,235 @@
     </button>
 
     <div id="cart-overlay" onclick="toggleCart()" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 hidden transition-opacity duration-300"></div>
-    <div id="cart-panel" class="cart-panel fixed top-0 right-0 h-full max-h-[100dvh] w-[min(100vw,450px)] bg-white p-6 shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-in-out hidden flex flex-col overflow-hidden">
-        <div class="flex justify-between items-center pb-4 border-b border-brand-blue/10 mb-4 shrink-0">
-            <h2 class="text-xl font-bold text-brand-blue">Your Order Summary</h2>
-            <button onclick="toggleCart()" class="text-gray-400 hover:text-brand-blue hover:bg-gray-100 rounded-full w-9 h-9 flex items-center justify-center text-2xl font-bold transition-colors duration-200">&times;</button>
+    <div id="cart-panel" class="cart-panel fixed top-0 right-0 h-full max-h-[100dvh] w-[min(100vw,550px)] bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-in-out hidden flex flex-col overflow-hidden">
+        <div class="checkout-header">
+            <button type="button" id="checkout-back-btn" onclick="previousCheckoutStep()" class="checkout-header-back hidden" aria-label="Go to previous checkout step">
+                <span aria-hidden="true">←</span> Back
+            </button>
+            <h2 class="checkout-header-title">Your Order</h2>
+            <button type="button" onclick="toggleCart()" class="checkout-header-close" aria-label="Close checkout">&times;</button>
         </div>
-        <div id="cart-panel-scroll" class="cart-panel-scroll flex-1 min-h-0 overflow-y-auto overscroll-contain pr-1">
-        <div id="cart-active-summary">
-        <div id="cart-items" class="space-y-3 mb-4">
-            <p class="text-gray-400 italic text-sm">Your cart is empty.</p>
+
+        <div id="checkout-stepper" class="checkout-stepper" aria-label="Checkout progress">
+            <div class="checkout-progress-line" aria-hidden="true"><span id="checkout-progress-fill"></span></div>
+            <div class="checkout-progress-item is-active" data-checkout-progress="1">
+                <span class="checkout-progress-dot">1</span><span>Order details</span>
+            </div>
+            <div class="checkout-progress-item" data-checkout-progress="2">
+                <span class="checkout-progress-dot">2</span><span>Address</span>
+            </div>
+            <div class="checkout-progress-item" data-checkout-progress="3">
+                <span class="checkout-progress-dot">3</span><span>Payment</span>
+            </div>
+            <div class="checkout-progress-item" data-checkout-progress="4">
+                <span class="checkout-progress-dot">4</span><span>Confirm</span>
+            </div>
         </div>
-        <div class="space-y-2 mb-4 pt-4 border-t border-brand-blue/10">
-            <div class="flex justify-between text-sm text-gray-600">
-                <span>Subtotal</span>
-                <span>₹<span id="cart-subtotal">0</span>/-</span>
-            </div>
-            <div id="cart-mrp-savings-row" class="hidden justify-between text-sm text-emerald-700">
-                <span>You saved</span>
-                <span>₹<span id="cart-mrp-savings">0</span>/-</span>
-            </div>
-            <div id="cart-shipping-row" class="hidden justify-between text-sm">
-                <span id="cart-shipping-label" class="text-gray-600">Shipping</span>
-                <span id="cart-shipping-value" class="font-medium"></span>
-            </div>
-            <div id="cart-discount-row" class="hidden justify-between text-sm text-emerald-700">
-                <span>Coupon (<span id="cart-coupon-label"></span>)</span>
-                <span>−₹<span id="cart-discount">0</span>/-</span>
-            </div>
-            <div class="flex justify-between font-bold text-lg text-brand-blue pt-1">
-                <span>Total:</span>
-                <span>₹<span id="cart-total">0</span>/-</span>
-            </div>
-            <p id="cart-shipping-hint" class="hidden text-xs text-emerald-600"></p>
-        </div>
-        </div>
-        <div id="checkout-form" class="space-y-3 pt-2 border-t border-brand-blue/10 pb-2">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1" for="customer-name">Your name <span class="text-red-500" aria-hidden="true">*</span></label>
-                <input type="text" id="customer-name" autocomplete="name" placeholder="Full name" required
-                    class="checkout-field w-full border border-brand-blue/20 p-2.5 rounded-lg outline-none">
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1" for="customer-phone">Phone number <span class="text-red-500" aria-hidden="true">*</span></label>
-                <input type="tel" id="customer-phone" autocomplete="tel" placeholder="e.g. 9876543210" required
-                    class="checkout-field w-full border border-brand-blue/20 p-2.5 rounded-lg outline-none"
-                    onblur="lookupCustomerIfPossible()">
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1" for="coupon-code">Coupon code <span class="text-gray-400 font-normal">(optional)</span></label>
-                <div class="flex gap-2">
-                    <input type="text" id="coupon-code" autocomplete="off" placeholder="e.g. DMG-AB12CD"
-                        class="checkout-field flex-1 border border-brand-blue/20 p-2.5 rounded-lg outline-none uppercase">
-                    <button type="button" onclick="applyCoupon()"
-                        class="shrink-0 px-3 py-2 rounded-lg border border-brand-blue/20 text-sm font-semibold text-brand-blue hover:bg-slate-50">
-                        Apply
-                    </button>
-                </div>
-                <p id="coupon-msg" class="hidden text-xs mt-1.5"></p>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1" id="fulfillment-label-text">Fulfillment <span class="text-red-500" aria-hidden="true">*</span></label>
-                <input type="hidden" id="fulfillment" value="">
-                <div class="pack-dd fulfillment-dd" id="fulfillment-dd">
-                    <button type="button" class="pack-dd-trigger" id="fulfillment-trigger"
-                        aria-haspopup="listbox" aria-expanded="false" aria-labelledby="fulfillment-label-text"
-                        onclick="toggleFulfillmentMenu(event)">
-                        <span class="pack-dd-label" id="fulfillment-display">
-                            <span class="pack-dd-name is-placeholder">Select your fulfillment method</span>
-                        </span>
-                        <svg class="pack-dd-chevron" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                            <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                    </button>
-                    <div class="pack-dd-menu" role="listbox" aria-labelledby="fulfillment-label-text">
-                        <button type="button" role="option" class="pack-dd-option" data-fulfillment="Store Pickup"
-                            aria-selected="false"
-                            onclick="setFulfillmentValue('Store Pickup', event)">
-                            <span class="pack-dd-check" aria-hidden="true">✓</span>
-                            <span class="pack-dd-option-label">Self Pickup</span>
-                            <span class="pack-dd-option-price">Free</span>
-                        </button>
-                        <button type="button" role="option" class="pack-dd-option" data-fulfillment="Local Delivery"
-                            aria-selected="false"
-                            onclick="setFulfillmentValue('Local Delivery', event)">
-                            <span class="pack-dd-check" aria-hidden="true">✓</span>
-                            <span class="pack-dd-option-label">Home Delivery</span>
-                            <span class="pack-dd-option-price">₹150</span>
-                        </button>
+
+        <div id="cart-panel-scroll" class="cart-panel-scroll flex-1 min-h-0 overflow-y-auto overscroll-contain">
+            <div id="checkout-form">
+                <section id="checkout-step-order" class="checkout-step is-active" data-checkout-step="1">
+                    <div id="cart-active-summary">
+                        <div id="cart-items-heading" class="checkout-section-heading">
+                            <h3>Your items</h3>
+                            <button type="button" onclick="closeCartPanel()">Edit cart</button>
+                        </div>
+                        <div id="cart-empty-state" class="checkout-empty hidden">
+                            <img src="/assets/icons/checkout/empty-checkout.png" alt=""
+                                class="checkout-empty-art" width="260" height="200" loading="lazy" decoding="async">
+                            <h3>Your cart is empty</h3>
+                            <p>Looks like you haven't added anything to your cart yet.<br>Explore our products and add items to get started.</p>
+                            <button type="button" onclick="closeCartPanel()" class="checkout-empty-btn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l3-8H5.4M7 13L5.4 5M7 13l-.6 3h12"/>
+                                    <circle cx="9" cy="20" r="1.4"/>
+                                    <circle cx="17" cy="20" r="1.4"/>
+                                </svg>
+                                Continue shopping
+                            </button>
+                        </div>
+                        <div id="cart-items" class="space-y-3 mb-4"></div>
+                        <div class="checkout-totals">
+                            <div><span>Subtotal</span><span>₹<span id="cart-subtotal">0</span>/-</span></div>
+                            <div id="cart-mrp-savings-row" class="hidden text-emerald-700"><span>You saved</span><span>₹<span id="cart-mrp-savings">0</span>/-</span></div>
+                            <div id="cart-shipping-row" class="hidden"><span id="cart-shipping-label">Shipping</span><span id="cart-shipping-value"></span></div>
+                            <div id="cart-discount-row" class="hidden text-emerald-700"><span>Coupon (<span id="cart-coupon-label"></span>)</span><span>−₹<span id="cart-discount">0</span>/-</span></div>
+                            <div class="checkout-total-row"><span>Total</span><span>₹<span id="cart-total">0</span>/-</span></div>
+                            <p id="cart-shipping-hint" class="hidden text-xs text-emerald-600"></p>
+                        </div>
                     </div>
-                </div>
-                <p id="fulfillment-delivery-hint" class="text-xs text-gray-500 mt-1.5">Home Delivery: ₹150/- (free on orders ₹1000+)</p>
-                <p id="pickup-location-hint" class="hidden text-xs text-brand-blue mt-1.5">
-                    Pickup location:
-                    <a id="pickup-maps-link" href="#" target="_blank" rel="noopener"
-                        class="font-semibold underline underline-offset-2 hover:text-brand-coral">
-                        Open in Google Maps
-                    </a>
-                </p>
-            </div>
-            <div id="checkout-address-fields" class="hidden space-y-3">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1" for="customer-address">Delivery address <span class="text-red-500" aria-hidden="true">*</span></label>
-                    <textarea id="customer-address" rows="2" autocomplete="street-address" placeholder="House / street / landmark"
-                        class="checkout-field w-full border border-brand-blue/20 p-2.5 rounded-lg outline-none resize-none"></textarea>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1" for="customer-pincode">Pincode <span class="text-red-500" aria-hidden="true">*</span></label>
-                    <input type="text" id="customer-pincode" inputmode="numeric" autocomplete="postal-code" placeholder="e.g. 560001"
-                        class="checkout-field w-full border border-brand-blue/20 p-2.5 rounded-lg outline-none">
-                </div>
-            </div>
-            <p class="text-[11px] text-gray-400"><span class="text-red-500">*</span> Required</p>
-            <p id="checkout-error" class="hidden text-sm text-red-600 font-medium" role="alert"></p>
-            <button type="button" id="place-order-btn" onclick="placeOrder()" disabled
-                class="w-full bg-brand-blue text-white font-bold py-3.5 px-4 rounded-lg shadow-md transition-all duration-200 opacity-50 cursor-not-allowed">
-                Place order
-            </button>
-            <button type="button" onclick="sendWhatsAppOrder()"
-                class="w-full text-sm text-brand-blue/80 hover:text-brand-blue underline-offset-2 hover:underline py-1">
-                Or message shop on WhatsApp
-            </button>
-        </div>
-        <div id="checkout-success" class="hidden space-y-3 pt-2 border-t border-brand-blue/10 pb-2">
-            <p class="text-sm font-semibold text-emerald-700">Order created — stock reserved</p>
-            <p class="text-sm text-gray-700">Order ID: <span id="success-order-id" class="font-bold text-brand-blue"></span></p>
-            <p class="text-sm text-gray-700">Pay exactly: <span class="font-bold text-brand-blue">₹<span id="success-order-total"></span>/-</span></p>
-            <p id="success-discount-wrap" class="hidden text-sm text-emerald-700">Coupon saved you ₹<span id="success-order-discount"></span>/-</p>
-            <p class="text-xs text-gray-500">Hold expires: <span id="success-order-until"></span></p>
 
-            <div id="pay-razorpay-block" class="hidden space-y-2">
-                <button type="button" id="razorpay-pay-btn" onclick="startRazorpayPayment()"
-                    class="w-full bg-brand-blue hover:bg-brand-blue-dark active:scale-[0.98] text-white font-bold py-3.5 px-4 rounded-lg shadow-md transition-all duration-200">
-                    Pay now
-                </button>
-                <button type="button" id="razorpay-check-btn" onclick="confirmRazorpayPayment()"
-                    class="hidden w-full border-2 border-brand-blue text-brand-blue hover:bg-brand-blue/5 font-bold py-2.5 px-4 rounded-lg text-sm transition-colors">
-                    Check payment status
-                </button>
-                <p id="razorpay-status-msg" class="hidden text-sm text-emerald-700 font-medium"></p>
-                <p id="razorpay-status-err" class="hidden text-sm text-red-600 font-medium"></p>
-            </div>
+                    <div class="checkout-fields">
+                        <div id="checkout-order-contact-slot" class="checkout-field-wide">
+                            <div id="checkout-contact-fields" class="checkout-fields">
+                              <div>
+                            <label for="customer-name">Your name <span class="text-red-500">*</span></label>
+                            <input type="text" id="customer-name" autocomplete="name" placeholder="Full name" required class="checkout-field">
+                              </div>
+                              <div>
+                            <label for="customer-phone">Phone number <span class="text-red-500">*</span></label>
+                            <input type="tel" id="customer-phone" inputmode="numeric" maxlength="10" autocomplete="tel" placeholder="10-digit number" required class="checkout-field" onblur="lookupCustomerIfPossible()">
+                              </div>
+                            </div>
+                        </div>
+                        <div id="checkout-order-coupon-slot" class="checkout-field-wide">
+                            <div id="checkout-coupon-fields">
+                                <label for="coupon-code">Coupon code <span class="checkout-optional">(optional)</span></label>
+                                <div class="checkout-inline-field">
+                                    <input type="text" id="coupon-code" autocomplete="off" placeholder="e.g. MINO10 or MINO-RF-A1B2C3" class="checkout-field uppercase">
+                                    <button type="button" onclick="applyCoupon()">Apply</button>
+                                </div>
+                                <p id="coupon-msg" class="hidden text-xs mt-1.5"></p>
+                            </div>
+                        </div>
+                        <div class="checkout-field-wide">
+                            <label id="fulfillment-label-text">Fulfillment <span class="text-red-500">*</span></label>
+                            <input type="hidden" id="fulfillment" value="">
+                            <div class="pack-dd fulfillment-dd" id="fulfillment-dd">
+                                <button type="button" class="pack-dd-trigger" id="fulfillment-trigger" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="fulfillment-label-text" onclick="toggleFulfillmentMenu(event)">
+                                    <span class="pack-dd-label" id="fulfillment-display"><span class="pack-dd-name is-placeholder">Select fulfillment method</span></span>
+                                    <svg class="pack-dd-chevron" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                </button>
+                                <div class="pack-dd-menu" role="listbox" aria-labelledby="fulfillment-label-text">
+                                    <button type="button" role="option" class="pack-dd-option" data-fulfillment="Store Pickup" aria-selected="false" onclick="setFulfillmentValue('Store Pickup', event)">
+                                        <span class="pack-dd-check" aria-hidden="true">✓</span><span class="pack-dd-option-label">Self Pickup</span><span class="pack-dd-option-price">Free</span>
+                                    </button>
+                                    <button type="button" role="option" class="pack-dd-option" data-fulfillment="Local Delivery" aria-selected="false" onclick="setFulfillmentValue('Local Delivery', event)">
+                                        <span class="pack-dd-check" aria-hidden="true">✓</span><span class="pack-dd-option-label">Home Delivery</span><span class="pack-dd-option-price">₹150</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <p id="fulfillment-delivery-hint" class="checkout-field-hint">Home Delivery: ₹150/- (free on orders ₹1000+)</p>
+                            <p id="pickup-location-hint" class="hidden checkout-field-hint checkout-pickup-hint">
+                                Pickup location: <a id="pickup-maps-link" href="#" target="_blank" rel="noopener noreferrer">Landmark ↗</a>
+                            </p>
+                        </div>
+                    </div>
+                    <p id="checkout-order-error" class="checkout-error hidden" role="alert"></p>
+                    <button type="button" id="checkout-address-btn" onclick="continueFromOrderStep()" class="checkout-primary-btn" disabled>Continue to address <span>→</span></button>
+                </section>
 
-            <details id="pay-upi-details" class="rounded-xl border border-brand-blue/15 bg-slate-50 open:pb-0">
-                <summary id="pay-upi-summary" class="hidden cursor-pointer text-sm font-semibold text-brand-blue px-3 py-2.5 list-none">
-                    Pay manually via UPI instead
-                </summary>
-                <div id="pay-instructions" class="p-3 space-y-2">
-                    <p class="text-xs font-bold uppercase tracking-wide text-brand-blue">Pay via UPI</p>
-                    <p class="text-sm text-gray-800">UPI ID: <span id="pay-upi-id" class="font-semibold select-all"></span>
-                        <button type="button" onclick="copyPayUpi()" class="text-xs text-brand-coral font-semibold ml-1 underline">Copy</button>
+                <section id="checkout-step-address" class="checkout-step" data-checkout-step="2">
+                    <h3 class="checkout-step-title">Select a delivery address</h3>
+                    <div id="checkout-address-fields" class="hidden space-y-3">
+                        <div id="checkout-address-contact-slot"></div>
+                        <div id="checkout-address-coupon-slot"></div>
+                        <div id="saved-addresses" class="hidden"></div>
+                        <div class="checkout-address-divider"><span>OR ENTER A NEW ADDRESS</span></div>
+                        <div>
+                            <label for="customer-address">Delivery address <span class="text-red-500">*</span></label>
+                            <div id="address-autocomplete" class="addr-ac">
+                                <textarea id="customer-address" rows="3" autocomplete="off" placeholder="House / flat, street, area or landmark" class="checkout-field resize-none"></textarea>
+                                <div id="address-suggestions" class="addr-ac-menu" role="listbox" aria-label="Address suggestions" hidden></div>
+                            </div>
+                        </div>
+                        <div class="checkout-field-pincode">
+                            <label for="customer-pincode">Pincode <span class="text-red-500">*</span></label>
+                            <input type="text" id="customer-pincode" inputmode="numeric" maxlength="6" autocomplete="postal-code" placeholder="e.g. 560001" class="checkout-field">
+                        </div>
+                    </div>
+                    <p id="checkout-error" class="checkout-error hidden" role="alert"></p>
+                    <button type="button" id="place-order-btn" onclick="placeOrder()" class="checkout-primary-btn" disabled>Continue to payment <span>→</span></button>
+                    <p class="checkout-secure-note">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                            <rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/>
+                            <path stroke-linecap="round" d="M8.5 10.5V7.75a3.5 3.5 0 017 0v2.75"/>
+                        </svg>
+                        Your information is secure and encrypted
                     </p>
-                    <p class="text-xs text-gray-500">Payee: <span id="pay-upi-name"></span></p>
-                    <p class="text-xs text-amber-800 bg-amber-50 rounded-lg px-2 py-1.5">Put the <span class="font-semibold">Order ID</span> in the UPI note/remark so we can match payment.</p>
-                    <a id="pay-upi-link" href="#" class="hidden w-full text-center bg-brand-blue hover:bg-brand-blue-dark text-white font-bold py-2.5 px-4 rounded-lg text-sm transition-colors">Open UPI app</a>
-                    <img id="pay-upi-qr" alt="UPI QR" class="hidden mx-auto w-40 h-40 rounded-lg bg-white border border-gray-200" width="160" height="160">
-                    <button type="button" id="report-paid-btn" onclick="reportPayment()"
-                        class="w-full bg-emerald-700 hover:bg-emerald-800 active:scale-[0.98] text-white font-bold py-3 px-4 rounded-lg shadow-md transition-all duration-200">
-                        I have paid
+                </section>
+
+                <section id="checkout-step-payment" class="checkout-step checkout-status-screen" data-checkout-step="3">
+                    <div class="checkout-spinner" aria-hidden="true"></div>
+                    <h3>Opening secure payment</h3>
+                    <p>Please complete your payment in the Razorpay window.</p>
+                    <div id="pay-razorpay-block" class="w-full">
+                        <button type="button" id="razorpay-pay-btn" onclick="startRazorpayPayment()" class="checkout-primary-btn hidden">Retry payment</button>
+                        <button type="button" id="razorpay-check-btn" onclick="confirmRazorpayPayment()" class="checkout-secondary-btn hidden">Check payment status</button>
+                        <p id="razorpay-status-msg" class="hidden checkout-status-message"></p>
+                        <p id="razorpay-status-err" class="hidden checkout-error"></p>
+                    </div>
+                </section>
+            </div>
+
+            <section id="checkout-payment-failure" class="checkout-step checkout-status-screen">
+                <img src="/assets/icons/checkout/payment-cancel.png" alt=""
+                    class="checkout-failure-art" width="300" height="200" loading="lazy" decoding="async">
+                <h3>Payment failed</h3>
+                <p id="payment-failure-message">We couldn't complete your payment.<br>Your order is still reserved, so you can try again.</p>
+                <div id="failure-hold-card" class="checkout-hold-card">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <circle cx="12" cy="12" r="9"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 7.5V12l3 2"/>
+                    </svg>
+                    <span>Your stock is reserved until
+                        <strong id="failure-hold-until">—</strong>
+                    </span>
+                </div>
+                <div class="checkout-failure-actions">
+                    <button type="button" onclick="startRazorpayPayment()" class="checkout-primary-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M20 11a8 8 0 10-2.6 5.9M20 5.5V11h-5.5"/>
+                        </svg>
+                        Try payment again
+                    </button>
+                    <button type="button" onclick="confirmRazorpayPayment()" class="checkout-secondary-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <rect x="2.5" y="5.5" width="19" height="13" rx="2.5"/>
+                            <path stroke-linecap="round" d="M2.5 10h19M6 14.5h3"/>
+                        </svg>
+                        I paid — check status
+                    </button>
+                    <button type="button" id="checkout-restart-btn" onclick="restartExpiredCheckout()" class="checkout-secondary-btn hidden">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 12H5m0 0 6-6m-6 6 6 6"/>
+                        </svg>
+                        Return to cart
+                    </button>
+                    <button type="button" id="checkout-edit-order-btn" onclick="cancelOrderAndEdit()" class="checkout-secondary-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 12H5m0 0 6-6m-6 6 6 6"/>
+                        </svg>
+                        Back to order details
                     </button>
                 </div>
-            </details>
+                <p class="checkout-secure-note">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                        <rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/>
+                        <path stroke-linecap="round" d="M8.5 10.5V7.75a3.5 3.5 0 017 0v2.75"/>
+                    </svg>
+                    Your information is secure and encrypted
+                </p>
+            </section>
 
-            <p id="pay-report-msg" class="hidden text-sm text-emerald-700 font-medium"></p>
-            <p id="pay-report-err" class="hidden text-sm text-red-600 font-medium"></p>
-            <button type="button" id="success-whatsapp-btn" onclick="shareOrderOnWhatsApp()"
-                class="w-full bg-brand-coral hover:bg-brand-coral-dark active:scale-[0.98] text-white font-bold py-3 px-4 rounded-lg shadow-md transition-all duration-200">
-                Share order on WhatsApp
-            </button>
-            <button type="button" onclick="resetCheckoutForm()"
-                class="w-full text-sm text-gray-500 hover:text-brand-blue py-1">
-                Place another order
-            </button>
-        </div>
+            <section id="checkout-success" class="checkout-step checkout-confirmation" data-checkout-step="4">
+                <div class="checkout-result-icon is-success" aria-hidden="true">✓</div>
+                <h3>Thank you, <span id="success-customer-name">Customer</span>!</h3>
+                <p>Your order has been placed successfully.</p>
+                <div class="checkout-order-meta">
+                    <div><span>Order ID</span><strong id="success-order-id"></strong></div>
+                    <div><span>Order date</span><strong id="success-order-date"></strong></div>
+                </div>
+                <div class="checkout-confirm-summary">
+                    <h4>Order summary</h4>
+                    <div id="success-order-items"></div>
+                    <div><span>Subtotal</span><span>₹<span id="success-order-subtotal">0</span>/-</span></div>
+                    <div id="success-discount-wrap" class="hidden text-emerald-700"><span>You saved</span><span>−₹<span id="success-order-discount">0</span>/-</span></div>
+                    <div><span>Shipping</span><span>₹<span id="success-order-shipping">0</span>/-</span></div>
+                    <div class="checkout-total-row"><span>Total paid</span><span>₹<span id="success-order-total"></span>/-</span></div>
+                    <div><span>Payment method</span><span>Razorpay</span></div>
+                </div>
+                <span id="success-order-until" class="hidden"></span>
+                <button type="button" onclick="shareOrderBillOnWhatsApp()" class="checkout-secondary-btn">Share bill on WhatsApp</button>
+                <button type="button" onclick="finishCheckout()" class="checkout-primary-btn">Continue shopping <span>→</span></button>
+                <p class="checkout-secure-note">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                        <rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/>
+                        <path stroke-linecap="round" d="M8.5 10.5V7.75a3.5 3.5 0 017 0v2.75"/>
+                    </svg>
+                    Your information is secure and encrypted
+                </p>
+            </section>
         </div>
     </div>
 
@@ -600,11 +817,173 @@
         </div>
     </div>
 
+    <div id="auth-overlay" class="auth-overlay" hidden onclick="closeAuthModal()"></div>
+    <div id="auth-modal" class="auth-modal" hidden role="dialog" aria-modal="true" aria-labelledby="auth-heading">
+        <div id="auth-pane-login">
+            <div class="auth-modal-head auth-login-head">
+                <button type="button" class="auth-modal-x" onclick="closeAuthModal()" aria-label="Close">×</button>
+                <h2 id="auth-heading" class="auth-modal-title auth-welcome">Welcome!</h2>
+                <p class="auth-modal-sub">Login or signup with your mobile number</p>
+                <ul class="auth-login-pills" aria-hidden="true">
+                    <li>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3.5 5.5 6.2v4.4c0 4.1 2.7 7.8 6.5 9.1 3.8-1.3 6.5-5 6.5-9.1V6.2L12 3.5z"/><path stroke-linecap="round" stroke-linejoin="round" d="m9.2 12.1 1.8 1.8 3.8-3.8"/></svg>
+                        Secure
+                    </li>
+                    <li>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M13 3 6 13h6l-1 8 7-10h-6l1-8z"/></svg>
+                        Fast
+                    </li>
+                    <li>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5 12 3l7.5 7.5v8A1.5 1.5 0 0 1 18 20.5H6A1.5 1.5 0 0 1 4.5 19v-8.5z"/><circle cx="15" cy="10.5" r="1.1" fill="currentColor" stroke="none"/></svg>
+                        Exclusive offers
+                    </li>
+                </ul>
+            </div>
+            <form class="auth-modal-body auth-login-body" onsubmit="submitLogin(event)" novalidate>
+                <p id="auth-login-error" class="auth-error auth-error-banner hidden">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3.2 21.2 20.8H2.8L12 3.2z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 10v4.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="17.3" r="0.9" fill="currentColor"/></svg>
+                    <span class="auth-error-copy">
+                        <strong data-auth-error-title class="hidden"></strong>
+                        <span data-auth-error-text></span>
+                    </span>
+                </p>
+                <label class="auth-label" for="login-phone">Mobile number</label>
+                <div class="auth-phone-row" id="login-phone-row">
+                    <span class="auth-cc" title="India">🇮🇳 +91 <svg class="auth-cc-caret" viewBox="0 0 12 8" aria-hidden="true"><path d="M1 1.5 6 6.5 11 1.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                    <input id="login-phone" type="tel" inputmode="numeric" maxlength="10" autocomplete="tel" placeholder="Enter 10-digit mobile number" class="auth-input auth-phone-input">
+                </div>
+                <button type="button" id="login-send-otp-btn" class="auth-submit" onclick="sendLoginOtp()">Send OTP <span aria-hidden="true">→</span></button>
+                <p id="login-otp-hint" class="auth-otp-sent hidden">
+                    <span class="auth-otp-sent-msg">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m5 12.5 4.2 4.2L19 7.5"/></svg>
+                        <span data-otp-sent-text></span>
+                    </span>
+                    <span class="auth-otp-sent-dot" aria-hidden="true">•</span>
+                    <button type="button" id="login-change-number" onclick="changeLoginNumber()">Change number</button>
+                </p>
+                <div id="login-otp-row" class="hidden">
+                    <label class="auth-label" for="login-otp-0">Enter OTP</label>
+                    <div id="login-otp-boxes" class="auth-otp-boxes">
+                        <input class="auth-otp-box" id="login-otp-0" inputmode="numeric" maxlength="1" autocomplete="one-time-code" aria-label="OTP digit 1">
+                        <input class="auth-otp-box" inputmode="numeric" maxlength="1" autocomplete="off" aria-label="OTP digit 2">
+                        <input class="auth-otp-box" inputmode="numeric" maxlength="1" autocomplete="off" aria-label="OTP digit 3">
+                        <input class="auth-otp-box" inputmode="numeric" maxlength="1" autocomplete="off" aria-label="OTP digit 4">
+                        <input class="auth-otp-box" inputmode="numeric" maxlength="1" autocomplete="off" aria-label="OTP digit 5">
+                        <input class="auth-otp-box" inputmode="numeric" maxlength="1" autocomplete="off" aria-label="OTP digit 6">
+                    </div>
+                    <input id="login-otp" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" class="auth-otp-hidden" tabindex="-1" aria-hidden="true">
+                    <p class="auth-resend">Didn’t receive OTP? <button type="button" id="login-resend-btn" onclick="sendLoginOtp()" disabled>Resend OTP</button> <span id="login-resend-timer">(00:30)</span></p>
+                    <button type="submit" id="login-submit-btn" class="auth-submit">Verify &amp; Continue <span aria-hidden="true">→</span></button>
+                </div>
+                <p class="auth-login-trust">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3.5 5.5 6.2v4.4c0 4.1 2.7 7.8 6.5 9.1 3.8-1.3 6.5-5 6.5-9.1V6.2L12 3.5z"/></svg>
+                    We never share your number with anyone
+                </p>
+            </form>
+        </div>
+        <div id="auth-pane-profile" class="hidden">
+            <div class="auth-modal-head auth-profile-head">
+                <button type="button" class="auth-modal-x" onclick="closeAuthModal()" aria-label="Close">×</button>
+                <h2 id="profile-heading" class="auth-modal-title">Profile</h2>
+                <p id="profile-subtitle" class="auth-modal-sub">Complete your details to continue shopping</p>
+            </div>
+            <form class="auth-modal-body auth-profile-body" onsubmit="submitProfile(event)" novalidate>
+                <p id="profile-hint" class="auth-hint-banner hidden">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3.5 5.5 6.2v4.4c0 4.1 2.7 7.8 6.5 9.1 3.8-1.3 6.5-5 6.5-9.1V6.2L12 3.5z"/><path stroke-linecap="round" d="m9.4 12.1 1.8 1.8 3.5-3.6"/></svg>
+                    <span>One last step! Add your mobile number to complete your profile.</span>
+                </p>
+                <div id="profile-verified-banner" class="auth-success-banner hidden">
+                    <span class="auth-success-check" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="currentColor"/><path d="m8.2 12.3 2.4 2.4 5.2-5.3" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </span>
+                    <div>
+                        <strong>You're all set!</strong>
+                        <p>Your mobile number is verified. You can update your details below.</p>
+                    </div>
+                </div>
+                <p id="profile-error" class="auth-error auth-error-banner hidden">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3.2 21.2 20.8H2.8L12 3.2z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 10v4.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="17.3" r="0.9" fill="currentColor"/></svg>
+                    <span class="auth-error-copy">
+                        <strong data-auth-error-title class="hidden"></strong>
+                        <span data-auth-error-text></span>
+                    </span>
+                </p>
+                <label class="auth-label" for="profile-name">Name <span class="text-red-500">*</span></label>
+                <div class="auth-icon-field">
+                    <span class="auth-field-ico" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path stroke-linecap="round" d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="8" r="3.4"/></svg>
+                    </span>
+                    <input id="profile-name" autocomplete="name" maxlength="80" placeholder="Your full name" class="auth-input">
+                </div>
+                <label class="auth-label" for="profile-phone">Mobile number <span class="text-red-500">*</span></label>
+                <div class="auth-phone-row" id="profile-phone-row">
+                    <span class="auth-cc" title="India">🇮🇳 +91 <svg class="auth-cc-caret" viewBox="0 0 12 8" aria-hidden="true"><path d="M1 1.5 6 6.5 11 1.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                    <input id="profile-phone" type="tel" inputmode="numeric" maxlength="10" autocomplete="tel" placeholder="Enter 10-digit mobile number" class="auth-input auth-phone-input">
+                </div>
+                <div id="profile-phone-verify">
+                    <button type="button" id="profile-send-otp-btn" class="auth-verify-otp" onclick="sendProfileOtp()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3.5 5.5 6.2v4.4c0 4.1 2.7 7.8 6.5 9.1 3.8-1.3 6.5-5 6.5-9.1V6.2L12 3.5z"/><path stroke-linecap="round" d="m9.4 12.1 1.8 1.8 3.5-3.6"/></svg>
+                        Verify mobile with OTP
+                    </button>
+                    <p id="profile-otp-help" class="auth-otp-help">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+                        We'll send a 6-digit OTP to verify your number.
+                    </p>
+                    <div id="profile-otp-row" class="hidden">
+                        <label class="auth-label" for="profile-otp">Enter OTP</label>
+                        <input id="profile-otp" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="6-digit OTP" class="auth-input">
+                        <button type="button" class="auth-verify-otp" onclick="confirmProfileOtp()">Verify OTP</button>
+                    </div>
+                </div>
+                <label class="auth-label" for="profile-email">Email Address</label>
+                <div class="auth-icon-field">
+                    <span class="auth-field-ico" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3.5" y="5.5" width="17" height="13" rx="2"/><path stroke-linecap="round" d="m4.2 7.2 7.8 5.4 7.8-5.4"/></svg>
+                    </span>
+                    <input id="profile-email" type="email" autocomplete="email" placeholder="Enter your email address" class="auth-input">
+                </div>
+                <div id="profile-google-slot" class="auth-google-slot hidden">
+                    <button type="button" id="profile-connect-google" class="auth-google" onclick="connectGoogleToCurrentUser()">
+                        <svg class="w-5 h-5" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                        Connect with Google
+                    </button>
+                    <p class="auth-google-help">Connect your Google account to autofill your details.</p>
+                </div>
+                <button type="submit" id="profile-save-btn" class="auth-submit">SAVE</button>
+                <p class="auth-login-trust auth-profile-trust">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+                    Your information is safe with us
+                </p>
+            </form>
+        </div>
+    </div>
+    <div id="auth-recaptcha" class="auth-recaptcha-slot" aria-hidden="true"></div>
+
+    <div id="orders-overlay" class="auth-overlay" hidden onclick="closeOrdersPanel()"></div>
+    <aside id="orders-panel" class="orders-panel" hidden aria-label="My orders">
+        <div class="orders-panel-head">
+            <h2 class="font-bold text-brand-blue text-lg">My orders</h2>
+            <button type="button" class="auth-modal-x static" onclick="closeOrdersPanel()" aria-label="Close">×</button>
+        </div>
+        <div id="orders-list" class="orders-panel-body space-y-3"></div>
+    </aside>
+
+    <div id="store-toast" class="store-toast" hidden role="status" aria-live="polite"></div>
+
     <script src="/products.js"></script>
     <script src="/filter-config.js"></script>
     <script src="js/product-images.js"></script>
     <script src="js/price-display.js"></script>
     <script src="js/api-config.js"></script>
+    <script src="js/firebase-config.js" onerror="window.MINO_FIREBASE=window.MINO_FIREBASE||{enabled:false}"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+    <script src="js/firebase-init.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/addresses.js"></script>
+    <script src="js/address-autocomplete.js"></script>
+    <script src="js/account-orders.js"></script>
     <script src="js/stock.js"></script>
     <script src="js/packs.js"></script>
     <script src="js/catalog-load.js"></script>

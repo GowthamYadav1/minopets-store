@@ -256,7 +256,8 @@ function hydrateCatalogFromCache() {
         if (!applyCatalogProducts(cached.products, 'cache')) return false;
         AppState.catalogLoadedAt = cached.at;
         if (cached.config) applyStoreConfig(cached.config);
-        if (cached.stock && typeof AppState !== 'undefined') {
+        const firebaseStock = typeof minoFunctionsEnabled === 'function' && minoFunctionsEnabled();
+        if (!firebaseStock && cached.stock && typeof AppState !== 'undefined') {
             AppState.stock = cached.stock;
             AppState.stockLoadedAt = cached.at;
             if (typeof applyStockToProducts === 'function') applyStockToProducts();
@@ -332,7 +333,8 @@ async function loadCatalog(force = false) {
 
         if (data.config) applyStoreConfig(data.config);
 
-        if (data.stock && typeof data.stock === 'object') {
+        const firebaseStock = typeof minoFunctionsEnabled === 'function' && minoFunctionsEnabled();
+        if (!firebaseStock && data.stock && typeof data.stock === 'object') {
             AppState.stock = data.stock;
             AppState.stockLoadedAt = Date.now();
             if (typeof applyStockToProducts === 'function') applyStockToProducts();
@@ -341,7 +343,11 @@ async function loadCatalog(force = false) {
         }
 
         // Persist normalized list (sku → image already synced)
-        persistCatalogCache(products.map((p) => ({ ...p })), data.stock || null, data.config || null);
+        persistCatalogCache(
+            products.map((p) => ({ ...p })),
+            firebaseStock ? null : (data.stock || null),
+            data.config || null
+        );
 
         const sample = products.find((p) => p.sku) || products[0];
         console.log(

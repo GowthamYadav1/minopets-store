@@ -201,10 +201,31 @@ function toggleMobileSearch() {
     else openMobileSearch();
 }
 
+let storeLoaderDone = false;
+
+/** Hide the boot loader once listings can show real availability. */
+function hideStoreLoader() {
+    if (storeLoaderDone) return;
+    storeLoaderDone = true;
+    const el = document.getElementById('store-loader');
+    if (!el) return;
+    el.classList.add('is-hidden');
+    setTimeout(() => el.remove(), 400);
+}
+
+/** True when listings already know their availability, so no loader is needed. */
+function storeStockReady() {
+    const stockApi = typeof isStockApiConfigured === 'function' ? isStockApiConfigured() : false;
+    if (!stockApi) return true;
+    return !!(AppState.stock && AppState.stockLoadedAt);
+}
+
 async function bootStore() {
     if (typeof categories !== 'undefined') buildCategoryNav();
     initHeroSlider();
     initScrollTop();
+
+    if (typeof initAuth === 'function') initAuth();
 
     bindSearchInput(document.getElementById('search-input'));
     bindSearchInput(document.getElementById('search-input-mobile'));
@@ -239,9 +260,15 @@ async function bootStore() {
 
     handleRouteChange();
 
+    // Repeat visits paint from cache with known stock — no need to stall behind the loader.
+    if (hadCache && storeStockReady()) hideStoreLoader();
+    const loaderSafety = setTimeout(hideStoreLoader, 8000);
+
     const afterRemote = () => {
         renderCurrentView();
         if (typeof updateCartUI === 'function') updateCartUI(false);
+        clearTimeout(loaderSafety);
+        hideStoreLoader();
     };
 
     const catalogPromise = (typeof loadCatalog === 'function')
@@ -254,19 +281,20 @@ async function bootStore() {
         : Promise.resolve(false);
 
     catalogPromise.then((catalogOk) => {
-        // Stock is included in getCatalog; only call getStock if catalog failed or skipped.
-        if (catalogOk) {
-            afterRemote();
-            return;
-        }
-        if (typeof loadStock === 'function') {
-            return loadStock().then((ok) => {
+        const firebaseStock = typeof minoFunctionsEnabled === 'function' && minoFunctionsEnabled();
+        // Firebase is the live stock source. Sheets stock is used only by the
+        // legacy non-Firebase flow.
+        if (typeof loadStock === 'function' && (firebaseStock || !catalogOk)) {
+            return loadStock(firebaseStock).then((ok) => {
                 if (!ok) {
-                    console.warn('[stock] caps active (no live stock). Fix API / allowed_origins, then hard refresh.');
+                    console.warn('[stock] live refresh failed; keeping the last known stock.');
                 }
                 afterRemote();
             });
         }
+        afterRemote();
+    }).catch((err) => {
+        console.error('[boot] catalog/stock load failed', err);
         afterRemote();
     });
 }

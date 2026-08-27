@@ -2,16 +2,51 @@
 let lastPlacedOrder = null;
 
 /** Client preview of applied coupon (server recalculates on createOrder). */
-let appliedCoupon = null; // { code, amount, discount }
+let appliedCoupon = null; // { code, amount, discount, discount_type, percentage, reusable }
+let currentCheckoutStep = 1;
+let paymentWindowOpened = false;
+let paymentConfirming = false;
+let razorpayOpenInFlight = false;
+
+function checkoutApiReady() {
+    if (typeof minoFunctionsEnabled === 'function' && minoFunctionsEnabled()) return true;
+    return !!(MINO_API?.baseUrl && !String(MINO_API.baseUrl).includes('PASTE_'));
+}
+
+async function checkoutPost(action, extra) {
+    const payload = Object.assign({}, extra || {}, { action });
+    if (typeof minoFunctionsEnabled === 'function' && minoFunctionsEnabled() && typeof minoFunctionsPost === 'function') {
+        const fn = {
+            createOrder: 'createOrder',
+            createRazorpayOrder: 'createRazorpayOrder',
+            confirmRazorpayPayment: 'confirmRazorpayPayment'
+        }[action] || action;
+        return minoFunctionsPost(fn, payload);
+    }
+    payload.token = MINO_API.token;
+    payload.origin = minoStoreOrigin();
+    const res = await fetch(MINO_API.baseUrl, {
+        method: 'POST',
+        redirect: 'follow',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
+    });
+    return res.json();
+}
 
 function getAppliedCouponCode() {
     return appliedCoupon?.code || '';
 }
 
-function getAppliedCouponDiscount(base) {
+function getAppliedCouponDiscount(productSubtotal, totalBase) {
     if (!appliedCoupon) return 0;
-    const amount = Number(appliedCoupon.amount) || 0;
-    const maxBase = Number(base);
+    const products = Math.max(0, Number(productSubtotal) || 0);
+    if (appliedCoupon.discount_type === 'percent') {
+        const percentage = Number(appliedCoupon.percentage) || 0;
+        return Math.min(products, Math.round(products * percentage / 100));
+    }
+    const amount = Number(appliedCoupon.amount) || Number(appliedCoupon.discount) || 0;
+    const maxBase = Number(totalBase);
     if (!isFinite(maxBase) || maxBase < 0) return 0;
     return Math.min(amount, maxBase);
 }
@@ -38,14 +73,10 @@ function clearAppliedCoupon() {
 async function applyCoupon() {
     setCouponMsg('');
     const code = document.getElementById('coupon-code')?.value.trim().toUpperCase() || '';
-    const phone = document.getElementById('customer-phone')?.value.trim() || '';
+    const phone = checkoutIdentityPhone();
     if (!code) {
         clearAppliedCoupon();
         setCouponMsg('Enter a coupon code.', false);
-        return;
-    }
-    if (!phone || phone.replace(/\D/g, '').length < 10) {
-        setCouponMsg('Enter your phone first — coupons are locked to a number.', false);
         return;
     }
     if (!MINO_API?.baseUrl) {
@@ -56,7 +87,6 @@ async function applyCoupon() {
     const subtotal = typeof getCartSubtotal === 'function' ? getCartSubtotal() : 0;
     const fulfillment = document.getElementById('fulfillment')?.value || '';
     const shipping = typeof getShippingFee === 'function' ? getShippingFee(subtotal, fulfillment) : 0;
-    const base = subtotal + shipping;
 
     const sep = MINO_API.baseUrl.includes('?') ? '&' : '?';
     const url =
@@ -65,7 +95,8 @@ async function applyCoupon() {
         `&origin=${encodeURIComponent(minoStoreOrigin())}` +
         `&code=${encodeURIComponent(code)}` +
         `&phone=${encodeURIComponent(phone)}` +
-        `&subtotal=${encodeURIComponent(String(base))}`;
+        `&subtotal=${encodeURIComponent(String(subtotal))}` +
+        `&total_base=${encodeURIComponent(String(subtotal + shipping))}`;
 
     try {
         const res = await fetch(url, { method: 'GET', redirect: 'follow' });
@@ -79,11 +110,17 @@ async function applyCoupon() {
         appliedCoupon = {
             code: data.code,
             amount: data.amount,
-            discount: data.discount
+            discount: data.discount,
+            discount_type: data.discount_type || 'fixed',
+            percentage: Number(data.percentage) || 0,
+            reusable: Boolean(data.reusable)
         };
         const input = document.getElementById('coupon-code');
         if (input) input.value = data.code;
-        setCouponMsg(`Applied −₹${data.discount}/- (${data.code})`, true);
+        const offer = data.discount_type === 'percent'
+            ? `${data.percentage}% off`
+            : `₹${data.discount}/- off`;
+        setCouponMsg(`Applied ${offer} (−₹${data.discount}/-)`, true);
         updateCartUI(false);
     } catch (err) {
         console.error('[checkout] validateCoupon failed', err);
@@ -103,6 +140,10 @@ function friendlyCouponError(data) {
             return 'This coupon has expired.';
         case 'coupon_phone_mismatch':
             return 'This coupon is for a different phone number.';
+        case 'invalid_phone':
+            return 'Enter your phone first — this coupon is locked to a number.';
+        case 'coupon_invalid_percentage':
+            return 'This coupon has an invalid percentage.';
         case 'coupon_inactive':
             return 'Coupon is not active.';
         default:
@@ -117,7 +158,91 @@ function mapFulfillment(uiValue) {
 function getPickupMapsUrl() {
     const fromSheet = String(AppState?.storeConfig?.pickup_maps_url || '').trim();
     if (fromSheet && !/REPLACE_WITH/i.test(fromSheet)) return fromSheet;
-    return '';
+    const fromApi = String(MINO_API?.pickupMapsUrl || '').trim();
+    if (fromApi && !/REPLACE_WITH/i.test(fromApi)) return fromApi;
+    return 'https://www.google.com/maps/search/?api=1&query=The+Rameshwaram+Cafe+JP+Nagar';
+}
+
+function isStorePickup() {
+    return document.getElementById('fulfillment')?.value === 'Store Pickup';
+}
+
+function checkoutLastTen(raw) {
+    const digits = String(raw || '').replace(/\D/g, '');
+    return digits.length >= 10 ? digits.slice(-10) : digits;
+}
+
+function checkoutIdentityPhone() {
+    const user = typeof minoCurrentUser === 'function' ? minoCurrentUser() : null;
+    if (user?.phoneNumber) return checkoutLastTen(user.phoneNumber);
+    if (window.minoUserProfile?.phone) return checkoutLastTen(window.minoUserProfile.phone);
+    return checkoutLastTen(document.getElementById('customer-phone')?.value);
+}
+
+function checkoutIdentityName() {
+    const profileName = String(window.minoUserProfile?.name || '').trim();
+    if (profileName) return profileName;
+    return document.getElementById('customer-name')?.value.trim() || '';
+}
+
+function checkoutContactReady() {
+    const name = checkoutIdentityName();
+    const phone = checkoutIdentityPhone();
+    return name.length >= 2 && phone.length === 10;
+}
+
+function fillCheckoutIdentityFields() {
+    const user = typeof minoCurrentUser === 'function' ? minoCurrentUser() : null;
+    const nameEl = document.getElementById('customer-name');
+    const phoneEl = document.getElementById('customer-phone');
+    const signedInPhone = user?.phoneNumber ? checkoutLastTen(user.phoneNumber) : '';
+    if (phoneEl) {
+        if (signedInPhone) phoneEl.value = signedInPhone;
+        phoneEl.disabled = !!signedInPhone;
+        phoneEl.readOnly = !!signedInPhone;
+    }
+    if (nameEl && user) {
+        const profileName = String(window.minoUserProfile?.name || '').trim();
+        if (profileName && !nameEl.value.trim()) nameEl.value = profileName;
+    }
+}
+
+function renderCheckoutIdentity() {
+    const contact = document.getElementById('checkout-contact-fields');
+    const orderSlot = document.getElementById('checkout-order-contact-slot');
+    const addressSlot = document.getElementById('checkout-address-contact-slot');
+    const coupon = document.getElementById('checkout-coupon-fields');
+    const orderCouponSlot = document.getElementById('checkout-order-coupon-slot');
+    const addressCouponSlot = document.getElementById('checkout-address-coupon-slot');
+    if (!contact || !orderSlot || !addressSlot || !coupon || !orderCouponSlot || !addressCouponSlot) return;
+    const signedIn = typeof minoCurrentUser === 'function' && !!minoCurrentUser();
+    const complete = typeof minoProfileComplete === 'function' && minoProfileComplete();
+    const delivery = document.getElementById('fulfillment')?.value === 'Local Delivery';
+    fillCheckoutIdentityFields();
+    contact.classList.toggle('hidden', signedIn && complete);
+    if (!(signedIn && complete)) {
+        (delivery && !signedIn ? addressSlot : orderSlot).appendChild(contact);
+    }
+    (delivery && !signedIn ? addressCouponSlot : orderCouponSlot).appendChild(coupon);
+    updatePlaceOrderButton();
+}
+
+async function syncLoggedInCheckoutProfile() {
+    const user = typeof minoCurrentUser === 'function' ? minoCurrentUser() : null;
+    if (!user) return { ok: true };
+    if (typeof minoProfileComplete === 'function' && minoProfileComplete() && window.minoUserProfile?.name) {
+        return { ok: true };
+    }
+    const name = document.getElementById('customer-name')?.value.trim() || '';
+    if (name.replace(/\s+/g, ' ').length < 2) return { ok: false, missingName: true };
+    if (typeof minoSaveProfileFromCheckout !== 'function') return { ok: false };
+    try {
+        const saved = await minoSaveProfileFromCheckout(name);
+        return { ok: !!saved };
+    } catch (err) {
+        console.warn('[checkout] profile', err);
+        return { ok: false };
+    }
 }
 
 function onFulfillmentChange() {
@@ -135,19 +260,23 @@ function onFulfillmentChange() {
     } else if (fulfillment === 'Store Pickup') {
         addressBlock?.classList.add('hidden');
         deliveryHint?.classList.add('hidden');
-        if (mapsUrl) {
-            pickupHint?.classList.remove('hidden');
-            if (mapsLink) mapsLink.href = mapsUrl;
-        } else {
-            pickupHint?.classList.add('hidden');
+        pickupHint?.classList.remove('hidden');
+        if (mapsLink) {
+            mapsLink.href = mapsUrl;
+            mapsLink.target = '_blank';
+            mapsLink.rel = 'noopener noreferrer';
         }
+        if (currentCheckoutStep === 2 && !lastPlacedOrder) goCheckoutStep(1);
     } else {
         addressBlock?.classList.add('hidden');
         deliveryHint?.classList.remove('hidden');
         pickupHint?.classList.add('hidden');
     }
+    renderCheckoutProgress(currentCheckoutStep);
+    renderCheckoutIdentity();
     updateCartUI(false);
     updatePlaceOrderButton();
+    if (typeof renderSavedAddresses === 'function') renderSavedAddresses();
 }
 
 const FULFILLMENT_OPTIONS = {
@@ -279,45 +408,145 @@ function setCheckoutError(msg) {
     el.classList.remove('hidden');
 }
 
-/** True when required checkout fields (and cart) are ready to place an order. */
-function checkoutRequiredFieldsReady() {
+function setCheckoutOrderError(msg) {
+    const el = document.getElementById('checkout-order-error');
+    if (!el) return;
+    el.textContent = msg || '';
+    el.classList.toggle('hidden', !msg);
+}
+
+function checkoutOrderStepReady() {
     const hasCart = typeof AppState !== 'undefined' && Object.keys(AppState.cart || {}).length > 0;
     if (!hasCart) return false;
-
-    const name = document.getElementById('customer-name')?.value.trim() || '';
-    const phone = document.getElementById('customer-phone')?.value.trim() || '';
     const fulfillmentUi = document.getElementById('fulfillment')?.value || '';
+    if (!FULFILLMENT_OPTIONS[fulfillmentUi]) return false;
+    return fulfillmentUi === 'Store Pickup' ? checkoutContactReady() : true;
+}
+
+function checkoutAddressStepReady() {
+    const fulfillmentUi = document.getElementById('fulfillment')?.value || '';
+    if (fulfillmentUi === 'Store Pickup') return true;
     const address = document.getElementById('customer-address')?.value.trim() || '';
     const pincode = document.getElementById('customer-pincode')?.value.trim() || '';
+    return fulfillmentUi === 'Local Delivery'
+        && checkoutContactReady()
+        && !!address
+        && /^\d{6}$/.test(pincode);
+}
 
-    if (!name) return false;
-    if (!phone || phone.replace(/\D/g, '').length < 10) return false;
-    if (!fulfillmentUi || !FULFILLMENT_OPTIONS[fulfillmentUi]) return false;
-    if (fulfillmentUi === 'Local Delivery' && (!address || !pincode)) return false;
-    return true;
+/** True when every value needed to reserve the order is present. */
+function checkoutRequiredFieldsReady() {
+    return checkoutOrderStepReady() && checkoutAddressStepReady();
+}
+
+function renderCheckoutProgress(step) {
+    const pickup = isStorePickup();
+    document.getElementById('checkout-stepper')?.classList.toggle('is-pickup', pickup);
+    const logical = Math.max(1, Math.min(4, Number(step) || 1));
+    const currentVisual = pickup
+        ? (logical <= 1 ? 1 : logical === 4 ? 3 : 2)
+        : logical;
+    document.querySelectorAll('[data-checkout-progress]').forEach((item) => {
+        const itemStep = Number(item.dataset.checkoutProgress);
+        const visual = pickup
+            ? (itemStep === 1 ? 1 : itemStep === 3 ? 2 : itemStep === 4 ? 3 : 0)
+            : itemStep;
+        if (!visual) return;
+        const dot = item.querySelector('.checkout-progress-dot');
+        item.classList.toggle('is-active', visual === currentVisual);
+        item.classList.toggle('is-complete', visual < currentVisual);
+        if (dot) dot.textContent = visual < currentVisual ? '✓' : String(visual);
+    });
+    const fill = document.getElementById('checkout-progress-fill');
+    if (fill) fill.style.width = `${((currentVisual - 1) / (pickup ? 2 : 3)) * 100}%`;
+}
+
+function showCheckoutPanel(id, visualStep) {
+    document.querySelectorAll('#cart-panel-scroll > .checkout-step, #checkout-form > .checkout-step')
+        .forEach((panel) => panel.classList.remove('is-active'));
+    document.getElementById(id)?.classList.add('is-active');
+    currentCheckoutStep = visualStep;
+    renderCheckoutProgress(visualStep);
+    const back = document.getElementById('checkout-back-btn');
+    if (back) back.classList.toggle('hidden', visualStep === 1 || visualStep >= 3);
+    document.getElementById('cart-panel-scroll')?.scrollTo({ top: 0, behavior: 'smooth' });
+    if (typeof closeAddressSuggestions === 'function') closeAddressSuggestions();
+}
+
+function goCheckoutStep(step) {
+    const n = Math.max(1, Math.min(4, Number(step) || 1));
+    const ids = {
+        1: 'checkout-step-order',
+        2: 'checkout-step-address',
+        3: 'checkout-step-payment',
+        4: 'checkout-success'
+    };
+    showCheckoutPanel(ids[n], n);
+    if (n === 2 && typeof renderSavedAddresses === 'function') renderSavedAddresses();
+    updatePlaceOrderButton();
+}
+
+async function continueFromOrderStep() {
+    setCheckoutOrderError('');
+    const synced = await syncLoggedInCheckoutProfile();
+    if (!synced.ok) {
+        setCheckoutOrderError(synced.missingName
+            ? 'Enter your name to continue.'
+            : 'Could not save your name. Try again.');
+        updatePlaceOrderButton();
+        return;
+    }
+    if (!checkoutOrderStepReady()) {
+        setCheckoutOrderError(isStorePickup()
+            ? 'Enter your name, a valid 10-digit phone number, and select fulfillment.'
+            : 'Select a fulfillment method.');
+        updatePlaceOrderButton();
+        return;
+    }
+    if (isStorePickup()) {
+        placeOrder();
+        return;
+    }
+    goCheckoutStep(2);
+}
+
+function continueToAddress() {
+    continueFromOrderStep();
+}
+
+function returnToCheckoutForm() {
+    goCheckoutStep(isStorePickup() ? 1 : 2);
+}
+
+function previousCheckoutStep() {
+    if (currentCheckoutStep === 2 && !lastPlacedOrder) goCheckoutStep(1);
 }
 
 let placeOrderInFlight = false;
 
 function updatePlaceOrderButton() {
     const btn = document.getElementById('place-order-btn');
-    if (!btn) return;
-    const ready = !placeOrderInFlight && checkoutRequiredFieldsReady();
-    btn.disabled = !ready;
-    btn.classList.toggle('opacity-50', !ready);
-    btn.classList.toggle('cursor-not-allowed', !ready);
-    btn.classList.toggle('hover:bg-brand-blue-dark', ready);
-    btn.classList.toggle('active:scale-[0.98]', ready);
-    if (!placeOrderInFlight) btn.textContent = 'Place order';
+    const addressBtn = document.getElementById('checkout-address-btn');
+    const orderReady = checkoutOrderStepReady();
+    const paymentReady = !placeOrderInFlight && checkoutRequiredFieldsReady();
+    if (addressBtn) {
+        addressBtn.disabled = placeOrderInFlight || !orderReady;
+        addressBtn.innerHTML = placeOrderInFlight
+            ? 'Preparing payment…'
+            : (isStorePickup()
+                ? 'Continue to payment <span>→</span>'
+                : 'Continue to address <span>→</span>');
+    }
+    if (btn) {
+        btn.disabled = !paymentReady;
+        if (!placeOrderInFlight) btn.innerHTML = 'Continue to payment <span>→</span>';
+    }
 }
 
 function setPlaceOrderBusy(busy) {
     const btn = document.getElementById('place-order-btn');
-    if (!btn) return;
     placeOrderInFlight = !!busy;
-    btn.textContent = busy ? 'Placing order…' : 'Place order';
-    btn.classList.toggle('opacity-70', busy);
-    btn.classList.toggle('cursor-wait', busy);
+    if (btn) btn.textContent = busy ? 'Preparing payment…' : 'Continue to payment';
     updatePlaceOrderButton();
 }
 
@@ -329,9 +558,21 @@ function initCheckoutFormValidation() {
         el.dataset.checkoutBound = '1';
         el.addEventListener('input', () => {
             setCheckoutError('');
+            setCheckoutOrderError('');
             updatePlaceOrderButton();
         });
     });
+    const nameEl = document.getElementById('customer-name');
+    if (nameEl && !nameEl.dataset.profileSyncBound) {
+        nameEl.dataset.profileSyncBound = '1';
+        nameEl.addEventListener('blur', () => {
+            if (typeof minoCurrentUser === 'function' && minoCurrentUser()) {
+                syncLoggedInCheckoutProfile();
+            }
+        });
+    }
+    if (typeof initAddressAutocomplete === 'function') initAddressAutocomplete();
+    renderCheckoutIdentity();
     updatePlaceOrderButton();
 }
 
@@ -363,6 +604,11 @@ function friendlyOrderError(data) {
         case 'origin_not_allowed':
         case 'missing_origin':
             return 'Store API blocked this site origin. Add it to Config allowed_origins in Sheets.';
+        case 'profile_incomplete':
+            return 'Enter your name to continue.';
+        case 'auth_invalid':
+        case 'auth_required':
+            return 'Your session expired. Sign in again.';
         case 'invalid_phone':
             return 'Enter a valid 10-digit phone number.';
         case 'invalid_name':
@@ -392,47 +638,68 @@ function friendlyOrderError(data) {
 }
 
 async function placeOrder() {
+    if (placeOrderInFlight) return;
     setCheckoutError('');
+    setCheckoutOrderError('');
+    const synced = await syncLoggedInCheckoutProfile();
+    if (!synced.ok) {
+        setCheckoutOrderError(synced.missingName
+            ? 'Enter your name to continue.'
+            : 'Could not save your name. Try again.');
+        goCheckoutStep(1);
+        return;
+    }
     if (!checkoutRequiredFieldsReady()) {
+        if (isStorePickup()) {
+            setCheckoutOrderError('Enter your name, a valid 10-digit phone number, and select fulfillment.');
+            goCheckoutStep(1);
+        } else {
+            setCheckoutError('Enter your contact details, delivery address, and a valid 6-digit pincode.');
+            goCheckoutStep(2);
+        }
         updatePlaceOrderButton();
         return;
     }
-    if (!MINO_API?.baseUrl || String(MINO_API.baseUrl).includes('PASTE_')) {
+    if (!checkoutApiReady()) {
         setCheckoutError('Order API not configured.');
         return;
     }
 
-    const name = document.getElementById('customer-name')?.value.trim() || '';
-    const phone = document.getElementById('customer-phone')?.value.trim() || '';
+    const completeProfile = typeof minoProfileComplete === 'function' && minoProfileComplete();
+    const name = completeProfile
+        ? (window.minoUserProfile?.name || checkoutIdentityName())
+        : checkoutIdentityName();
+    const phone = completeProfile
+        ? (window.minoUserProfile?.phone || checkoutIdentityPhone())
+        : checkoutIdentityPhone();
     const fulfillmentUi = document.getElementById('fulfillment')?.value || '';
     const address = document.getElementById('customer-address')?.value.trim() || '';
     const pincode = document.getElementById('customer-pincode')?.value.trim() || '';
 
     const payload = {
-        token: MINO_API.token,
-        origin: minoStoreOrigin(),
-        action: 'createOrder',
         customer_name: name,
         customer_phone: phone,
         fulfillment: mapFulfillment(fulfillmentUi),
-        address,
-        pincode,
+        address: fulfillmentUi === 'Store Pickup' ? '' : address,
+        pincode: fulfillmentUi === 'Store Pickup' ? '' : pincode,
         items: buildCartItemsPayload(),
         coupon_code: appliedCoupon?.code || document.getElementById('coupon-code')?.value.trim() || ''
     };
+    const geo = fulfillmentUi === 'Store Pickup'
+        ? null
+        : (typeof minoPickedAddressGeo === 'function' ? minoPickedAddressGeo() : null);
+    if (geo) payload.geo = geo;
 
+    const cartSnapshot = Object.assign({}, AppState.cart);
     setPlaceOrderBusy(true);
     try {
-        const res = await fetch(MINO_API.baseUrl, {
-            method: 'POST',
-            redirect: 'follow',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify(payload)
-        });
-        const data = await res.json();
+        const data = await checkoutPost('createOrder', payload);
         if (!data.ok) {
-            setCheckoutError(friendlyOrderError(data));
-            if (data.error === 'insufficient_stock' && typeof loadStock === 'function') {
+            returnToCheckoutForm();
+            const err = friendlyOrderError(data);
+            if (isStorePickup()) setCheckoutOrderError(err);
+            else setCheckoutError(err);
+            if ((data.error === 'insufficient_stock' || data.error === 'insufficient_stock') && typeof loadStock === 'function') {
                 await loadStock(true);
                 if (typeof renderCurrentView === 'function') renderCurrentView();
                 updateCartUI(false);
@@ -443,7 +710,9 @@ async function placeOrder() {
         lastPlacedOrder = {
             ...data,
             customer_name: name,
-            customer_phone: phone
+            customer_phone: phone,
+            cart_snapshot: cartSnapshot,
+            cart_cleared: false
         };
         if (data.stock && AppState) {
             AppState.stock = data.stock;
@@ -452,134 +721,124 @@ async function placeOrder() {
             if (typeof persistStockCache === 'function') persistStockCache();
         }
 
-        clearCartAfterOrder();
-        clearAppliedCoupon();
-        const couponInput = document.getElementById('coupon-code');
-        if (couponInput) couponInput.value = '';
-        showCheckoutSuccess(data);
+        if (typeof saveCheckoutAddressForUser === 'function') {
+            saveCheckoutAddressForUser().catch(() => {});
+        }
+
+        goCheckoutStep(3);
+        await startRazorpayPayment();
     } catch (err) {
         console.error('[checkout] createOrder failed', err);
-        setCheckoutError('Network error placing order. Check connection and try again.');
+        returnToCheckoutForm();
+        const networkMsg = 'Network error placing order. Check connection and try again.';
+        if (isStorePickup()) setCheckoutOrderError(networkMsg);
+        else setCheckoutError(networkMsg);
     } finally {
         setPlaceOrderBusy(false);
     }
 }
 
-function clearCartAfterOrder() {
-    const keys = Object.keys(AppState.cart);
+function clearCartAfterOrder(snapshot) {
+    const ordered = snapshot && typeof snapshot === 'object' ? snapshot : AppState.cart;
+    const keys = Object.keys(ordered);
     const productIds = new Set();
     keys.forEach((key) => {
         const parsed = typeof parseCartKey === 'function' ? parseCartKey(key) : { productId: key };
         productIds.add(String(parsed.productId));
+        const remaining = Number(AppState.cart[key] || 0) - Number(ordered[key] || 0);
+        if (remaining > 0) AppState.cart[key] = remaining;
+        else delete AppState.cart[key];
     });
-    AppState.cart = {};
     productIds.forEach((pid) => {
-        document.querySelectorAll(`[id="qty-${pid}"]`).forEach((el) => { el.innerText = 0; });
         if (typeof syncQtyControls === 'function') syncQtyControls(pid);
         if (typeof syncPackCardUI === 'function') syncPackCardUI(pid);
     });
     updateCartUI(false);
 }
 
+function checkoutEscape(text) {
+    const el = document.createElement('div');
+    el.textContent = String(text || '');
+    return el.innerHTML;
+}
+
 function showCheckoutSuccess(data) {
-    document.getElementById('cart-active-summary')?.classList.add('hidden');
-    document.getElementById('checkout-form')?.classList.add('hidden');
-    const success = document.getElementById('checkout-success');
-    success?.classList.remove('hidden');
+    const order = Object.assign({}, lastPlacedOrder || {}, data || {});
+    lastPlacedOrder = order;
     const idEl = document.getElementById('success-order-id');
     const totalEl = document.getElementById('success-order-total');
     const untilEl = document.getElementById('success-order-until');
-    if (idEl) idEl.textContent = data.order_id || '';
-    if (totalEl) totalEl.textContent = data.total != null ? data.total : '';
+    if (idEl) idEl.textContent = order.order_id || '';
+    if (totalEl) totalEl.textContent = order.total != null ? order.total : '';
+    const nameEl = document.getElementById('success-customer-name');
+    if (nameEl) nameEl.textContent = String(order.customer_name || 'Customer').split(/\s+/)[0];
+    const dateEl = document.getElementById('success-order-date');
+    if (dateEl) dateEl.textContent = new Date().toLocaleString('en-IN', {
+        dateStyle: 'medium',
+        timeStyle: 'short'
+    });
+    const subtotalEl = document.getElementById('success-order-subtotal');
+    if (subtotalEl) subtotalEl.textContent = order.subtotal != null ? order.subtotal : 0;
+    const shippingEl = document.getElementById('success-order-shipping');
+    if (shippingEl) shippingEl.textContent = order.shipping != null ? order.shipping : 0;
+    const itemsEl = document.getElementById('success-order-items');
+    if (itemsEl) {
+        itemsEl.innerHTML = (order.items || []).map((item) => `
+            <div class="checkout-confirm-item">
+                <span><strong>${checkoutEscape(item.name || 'Item')}</strong><small>Qty: ${Number(item.pack_qty || item.qty) || 1}</small></span>
+                <strong>₹${Number(item.line_total || 0)}/-</strong>
+            </div>
+        `).join('');
+    }
     const discWrap = document.getElementById('success-discount-wrap');
     if (discWrap) {
-        if (data.discount > 0) {
+        if (order.discount > 0) {
             discWrap.classList.remove('hidden');
             const dEl = document.getElementById('success-order-discount');
-            if (dEl) dEl.textContent = data.discount;
+            if (dEl) dEl.textContent = order.discount;
         } else {
             discWrap.classList.add('hidden');
         }
     }
     if (untilEl) {
         try {
-            untilEl.textContent = data.reserved_until
-                ? new Date(data.reserved_until).toLocaleString()
+            untilEl.textContent = order.reserved_until
+                ? new Date(order.reserved_until).toLocaleString()
                 : '—';
         } catch {
-            untilEl.textContent = data.reserved_until || '—';
+            untilEl.textContent = order.reserved_until || '—';
         }
     }
-
-    const pay = data.pay || {};
-    const upiEl = document.getElementById('pay-upi-id');
-    const nameEl = document.getElementById('pay-upi-name');
-    const linkEl = document.getElementById('pay-upi-link');
-    const qrEl = document.getElementById('pay-upi-qr');
-    if (upiEl) upiEl.textContent = pay.upi_id || '—';
-    if (nameEl) nameEl.textContent = pay.payee_name || 'Mino Pets';
-
-    if (linkEl) {
-        if (pay.upi_uri) {
-            linkEl.href = pay.upi_uri;
-            linkEl.classList.remove('hidden');
-            linkEl.classList.add('block');
-        } else {
-            linkEl.classList.add('hidden');
-            linkEl.classList.remove('block');
-        }
-    }
-
-    if (qrEl && pay.upi_uri) {
-        qrEl.src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(pay.upi_uri)}`;
-        qrEl.classList.remove('hidden');
-    } else if (qrEl) {
-        qrEl.classList.add('hidden');
-        qrEl.removeAttribute('src');
-    }
-
-    const razorpayOn = !!(pay.razorpay_enabled || AppState?.storeConfig?.razorpay_enabled);
-    configurePayUiMode(razorpayOn);
-
-    document.getElementById('pay-report-msg')?.classList.add('hidden');
-    document.getElementById('pay-report-err')?.classList.add('hidden');
-    document.getElementById('razorpay-status-msg')?.classList.add('hidden');
-    document.getElementById('razorpay-status-err')?.classList.add('hidden');
-    const reportBtn = document.getElementById('report-paid-btn');
-    if (reportBtn) {
-        reportBtn.disabled = false;
-        reportBtn.textContent = 'I have paid';
-        reportBtn.classList.remove('opacity-60', 'cursor-not-allowed', 'hidden');
-    }
-    const rzpBtn = document.getElementById('razorpay-pay-btn');
-    if (rzpBtn) {
-        rzpBtn.disabled = false;
-        rzpBtn.textContent = 'Pay now';
-    }
+    goCheckoutStep(4);
 }
 
-/** Razorpay primary + UPI fallback, or UPI-only. */
-function configurePayUiMode(razorpayOn) {
-    const rzpBlock = document.getElementById('pay-razorpay-block');
-    const details = document.getElementById('pay-upi-details');
-    const summary = document.getElementById('pay-upi-summary');
-    const checkBtn = document.getElementById('razorpay-check-btn');
-    const reportBtn = document.getElementById('report-paid-btn');
-
-    details?.classList.remove('hidden');
-    reportBtn?.classList.remove('hidden');
-
-    if (razorpayOn) {
-        rzpBlock?.classList.remove('hidden');
-        summary?.classList.remove('hidden');
-        if (details) details.open = false;
-        checkBtn?.classList.add('hidden');
-    } else {
-        rzpBlock?.classList.add('hidden');
-        summary?.classList.add('hidden');
-        if (details) details.open = true;
-        checkBtn?.classList.add('hidden');
+function shareOrderBillOnWhatsApp() {
+    const order = lastPlacedOrder;
+    if (!order) return;
+    const itemLines = (order.items || []).map((item) => {
+        const qty = Number(item.pack_qty || item.qty) || 1;
+        return `• ${qty}x ${item.name || item.product_id || 'Item'}`;
+    });
+    const lines = [
+        `Hi ${order.customer_name || 'there'}! ✅ Payment confirmed.`,
+        '',
+        `Order ID: ${order.order_id || ''}`,
+        'Items:',
+        ...itemLines,
+        '',
+        `Subtotal: ₹${Number(order.subtotal || 0)}/-`,
+        `Shipping: ₹${Number(order.shipping || 0)}/-`,
+    ];
+    if (Number(order.discount || 0) > 0) {
+        lines.push(`Coupon${order.coupon_code ? ` (${order.coupon_code})` : ''}: −₹${Number(order.discount)}/-`);
     }
+    lines.push(`Total paid: ₹${Number(order.total || 0)}/-`);
+    lines.push(`Fulfillment: ${order.fulfillment === 'local_delivery' ? 'Local Delivery' : 'Store Pickup'}`);
+    lines.push('');
+    lines.push("We'll prepare your order shortly. Reply here if you have questions.");
+    lines.push('— Mino Pets');
+    const phone = String(order.customer_phone || '').replace(/\D/g, '');
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(lines.join('\n'))}`, '_blank', 'noopener');
 }
 
 let razorpayScriptPromise = null;
@@ -604,11 +863,11 @@ function loadRazorpayScript() {
 function razorpayPrefill() {
     const name =
         lastPlacedOrder?.customer_name ||
-        document.getElementById('customer-name')?.value.trim() ||
+        checkoutIdentityName() ||
         '';
     const raw =
         lastPlacedOrder?.customer_phone ||
-        document.getElementById('customer-phone')?.value.trim() ||
+        checkoutIdentityPhone() ||
         '';
     const digits = String(raw).replace(/\D/g, '');
     const contact = digits.length >= 10 ? digits.slice(-10) : digits;
@@ -627,10 +886,19 @@ function friendlyRazorpayStartError(err, data) {
         return 'Apps Script needs external URL permission. In the script editor: Run authorizeExternalRequests → Allow → Deploy New version.';
     }
     if (code === 'razorpay_script_failed') {
-        return 'Could not load Razorpay checkout (blocked network/adblock?). Try another browser, or use UPI.';
+        return 'Could not load Razorpay checkout (blocked network/adblock?). Try another browser.';
+    }
+    if (/failed to fetch|networkerror|load failed/i.test(code)) {
+        return 'Could not reach the payment server (network or CORS). If you have not uploaded the new shop files, Pay now still uses the old path. Or add this site origin to ALLOWED_ORIGINS and redeploy Functions.';
     }
     if (code === 'razorpay_disabled') {
         return 'Razorpay is off in Config. Set razorpay_enabled = TRUE and redeploy.';
+    }
+    if (code === 'hold_expired' || code === 'invalid_order_status' || code === 'order_not_pending') {
+        return 'This stock reservation has expired. Close checkout, add the items again, and start a new order.';
+    }
+    if (code === 'payment_not_captured') {
+        return 'Razorpay has not confirmed a captured payment yet. If money was debited, wait a moment and check payment status.';
     }
     if (code === 'unknown_action') {
         return 'Apps Script is outdated — paste latest Code.gs and Deploy → New version.';
@@ -648,24 +916,116 @@ function friendlyRazorpayStartError(err, data) {
         return `Razorpay error: ${rzpDesc || code}. Check Test mode keys.`;
     }
     if (code && code !== 'razorpay_order_failed') {
-        return `Could not start Razorpay (${code}). Use UPI below, or try again.`;
+        return `Could not start Razorpay (${code}). Tap Pay now to try again.`;
     }
-    return 'Could not start Razorpay. Use UPI below, or try again.';
+    return 'Could not start Razorpay. Tap Pay now to try again.';
+}
+
+const PAYMENT_FAILURE_DEFAULT_HTML = 'We couldn\'t complete your payment.<br>Your order is still reserved, so you can try again.';
+
+function showPaymentFailure(message, canRestart = false) {
+    const messageEl = document.getElementById('payment-failure-message');
+    if (messageEl) {
+        if (message) messageEl.textContent = message;
+        else messageEl.innerHTML = PAYMENT_FAILURE_DEFAULT_HTML;
+    }
+    const untilEl = document.getElementById('failure-hold-until');
+    let heldUntil = '';
+    if (lastPlacedOrder?.reserved_until) {
+        try {
+            heldUntil = new Date(lastPlacedOrder.reserved_until).toLocaleString('en-IN');
+        } catch {
+            heldUntil = String(lastPlacedOrder.reserved_until);
+        }
+    }
+    if (untilEl) untilEl.textContent = heldUntil;
+    // An expired hold has nothing left to count down.
+    document.getElementById('failure-hold-card')?.classList.toggle('hidden', canRestart || !heldUntil);
+    document.getElementById('checkout-restart-btn')?.classList.toggle('hidden', !canRestart);
+    document.querySelectorAll('#checkout-payment-failure .checkout-primary-btn, #checkout-payment-failure .checkout-secondary-btn')
+        .forEach((button) => {
+            if (button.id !== 'checkout-restart-btn') button.classList.toggle('hidden', canRestart);
+        });
+    showCheckoutPanel('checkout-payment-failure', 3);
+}
+
+function restartExpiredCheckout() {
+    lastPlacedOrder = null;
+    paymentWindowOpened = false;
+    paymentConfirming = false;
+    razorpayOpenInFlight = false;
+    goCheckoutStep(1);
+}
+
+/**
+ * Back out of a failed payment: release the stock hold server-side so the items
+ * are sellable again, then reopen the form with the cart intact.
+ */
+async function cancelOrderAndEdit() {
+    if (paymentConfirming || razorpayOpenInFlight) return;
+    const btn = document.getElementById('checkout-edit-order-btn');
+    const orderId = lastPlacedOrder?.order_id;
+    if (!orderId) {
+        restartExpiredCheckout();
+        return;
+    }
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Releasing your items…';
+    }
+    try {
+        const data = await checkoutPost('cancelOrder', {
+            order_id: orderId,
+            cancel_token: lastPlacedOrder?.cancel_token || ''
+        });
+        if (data?.error === 'order_already_paid') {
+            if (data.stock && AppState) {
+                AppState.stock = data.stock;
+                AppState.stockLoadedAt = Date.now();
+                if (typeof applyStockToProducts === 'function') applyStockToProducts();
+                if (typeof persistStockCache === 'function') persistStockCache();
+            }
+            await confirmRazorpayPayment();
+            return;
+        }
+        if (data?.stock && AppState) {
+            AppState.stock = data.stock;
+            AppState.stockLoadedAt = Date.now();
+            if (typeof applyStockToProducts === 'function') applyStockToProducts();
+            if (typeof persistStockCache === 'function') persistStockCache();
+            if (typeof renderCurrentView === 'function') renderCurrentView();
+        }
+    } catch (err) {
+        console.warn('[checkout] cancelOrder failed; hold will expire on its own', err);
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'Back to order details';
+        }
+    }
+    lastPlacedOrder = null;
+    paymentWindowOpened = false;
+    paymentConfirming = false;
+    razorpayOpenInFlight = false;
+    setCheckoutError('');
+    setCheckoutOrderError('');
+    returnToCheckoutForm();
+    updateCartUI(false);
 }
 
 async function startRazorpayPayment() {
     if (!lastPlacedOrder?.order_id) return;
+    if (razorpayOpenInFlight || paymentConfirming) return;
+    razorpayOpenInFlight = true;
     const errEl = document.getElementById('razorpay-status-err');
     const msgEl = document.getElementById('razorpay-status-msg');
     const btn = document.getElementById('razorpay-pay-btn');
     errEl?.classList.add('hidden');
     msgEl?.classList.add('hidden');
+    showCheckoutPanel('checkout-step-payment', 3);
 
-    if (!MINO_API?.baseUrl || String(MINO_API.baseUrl).includes('PASTE_')) {
-        if (errEl) {
-            errEl.textContent = 'API not configured.';
-            errEl.classList.remove('hidden');
-        }
+    if (!checkoutApiReady()) {
+        showPaymentFailure('Payment service is not configured. Please contact Mino Pets.');
         return;
     }
 
@@ -677,18 +1037,11 @@ async function startRazorpayPayment() {
     let lastData = null;
     try {
         await loadRazorpayScript();
-        const res = await fetch(MINO_API.baseUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            redirect: 'follow',
-            body: JSON.stringify({
-                token: MINO_API.token,
-                origin: minoStoreOrigin(),
-                action: 'createRazorpayOrder',
-                order_id: lastPlacedOrder.order_id
-            })
+        const data = await checkoutPost('createRazorpayOrder', {
+            order_id: lastPlacedOrder.order_id,
+            cancel_token: lastPlacedOrder.cancel_token || ''
         });
-        const data = await res.json();
+        if (!data) throw new Error('Failed to fetch');
         lastData = data;
         if (data.already && (data.paid || data.status === 'paid')) {
             showPaymentConfirmed(data);
@@ -699,6 +1052,14 @@ async function startRazorpayPayment() {
         }
 
         lastPlacedOrder.razorpay_order_id = data.razorpay_order_id;
+        if (data.reserved_until) lastPlacedOrder.reserved_until = data.reserved_until;
+        if (data.razorpay_paid) {
+            await confirmRazorpayPayment({
+                order_id: lastPlacedOrder.order_id,
+                razorpay_order_id: data.razorpay_order_id
+            });
+            return;
+        }
         const prefill = razorpayPrefill();
         const rzp = new window.Razorpay({
             key: data.key_id,
@@ -710,36 +1071,39 @@ async function startRazorpayPayment() {
             prefill,
             notes: { mino_order_id: lastPlacedOrder.order_id },
             theme: { color: '#004B93' },
-            handler(response) {
-                confirmRazorpayPayment({
-                    order_id: lastPlacedOrder.order_id,
-                    razorpay_order_id: response.razorpay_order_id,
-                    razorpay_payment_id: response.razorpay_payment_id,
-                    razorpay_signature: response.razorpay_signature
-                });
+            async handler(response) {
+                paymentConfirming = true;
+                paymentWindowOpened = false;
+                try {
+                    await confirmRazorpayPayment({
+                        order_id: lastPlacedOrder.order_id,
+                        razorpay_order_id: response.razorpay_order_id,
+                        razorpay_payment_id: response.razorpay_payment_id,
+                        razorpay_signature: response.razorpay_signature,
+                        _confirmClaimed: true
+                    });
+                } finally {
+                    razorpayOpenInFlight = false;
+                }
             },
             modal: {
                 ondismiss() {
-                    document.getElementById('razorpay-check-btn')?.classList.remove('hidden');
-                    const details = document.getElementById('pay-upi-details');
-                    if (details) details.open = true;
-                    if (btn) {
-                        btn.disabled = false;
-                        btn.textContent = 'Pay now';
-                    }
+                    window.setTimeout(() => {
+                        if (!paymentWindowOpened || paymentConfirming) return;
+                        paymentWindowOpened = false;
+                        razorpayOpenInFlight = false;
+                        showPaymentFailure('Payment was cancelled before completion. Your order is still reserved, so you can try again.');
+                    }, 400);
                 }
             }
         });
         rzp.on('payment.failed', (resp) => {
+            paymentWindowOpened = false;
+            razorpayOpenInFlight = false;
             const desc = resp?.error?.description || 'Payment failed.';
-            if (errEl) {
-                errEl.textContent = `${desc} Try again, or pay via UPI.`;
-                errEl.classList.remove('hidden');
-            }
-            document.getElementById('razorpay-check-btn')?.classList.remove('hidden');
-            const details = document.getElementById('pay-upi-details');
-            if (details) details.open = true;
+            showPaymentFailure(`${desc} No amount was confirmed; you can try again.`);
         });
+        paymentWindowOpened = true;
         rzp.open();
         if (btn) {
             btn.disabled = false;
@@ -747,31 +1111,33 @@ async function startRazorpayPayment() {
         }
     } catch (err) {
         console.error('[checkout] createRazorpayOrder failed', err, lastData);
-        if (errEl) {
-            errEl.textContent = friendlyRazorpayStartError(err, lastData);
-            errEl.classList.remove('hidden');
-        }
+        paymentWindowOpened = false;
+        const canRestart = ['hold_expired', 'invalid_order_status', 'order_not_pending']
+            .includes(String(lastData?.error || err?.message || ''));
+        showPaymentFailure(friendlyRazorpayStartError(err, lastData), canRestart);
         if (btn) {
             btn.disabled = false;
             btn.textContent = 'Pay now';
         }
-        const details = document.getElementById('pay-upi-details');
-        if (details) details.open = true;
+    } finally {
+        if (!paymentWindowOpened) razorpayOpenInFlight = false;
     }
 }
 
 async function confirmRazorpayPayment(opts = {}) {
     const orderId = opts.order_id || lastPlacedOrder?.order_id;
     if (!orderId) return { ok: false };
+    if (paymentConfirming && !opts._confirmClaimed) return { ok: false, error: 'confirm_in_progress' };
 
     const errEl = document.getElementById('razorpay-status-err');
     const msgEl = document.getElementById('razorpay-status-msg');
     const checkBtn = document.getElementById('razorpay-check-btn');
     errEl?.classList.add('hidden');
 
-    if (!MINO_API?.baseUrl || String(MINO_API.baseUrl).includes('PASTE_')) {
+    if (!checkoutApiReady()) {
         return { ok: false };
     }
+    paymentConfirming = true;
 
     if (msgEl) {
         msgEl.textContent = 'Confirming payment…';
@@ -782,51 +1148,42 @@ async function confirmRazorpayPayment(opts = {}) {
         checkBtn.textContent = 'Checking…';
     }
 
+    let confirmData = null;
     try {
         const body = {
-            token: MINO_API.token,
-            origin: minoStoreOrigin(),
-            action: 'confirmRazorpayPayment',
-            order_id: orderId
+            order_id: orderId,
+            cancel_token: lastPlacedOrder?.cancel_token || ''
         };
         const rzpOrder = opts.razorpay_order_id || lastPlacedOrder?.razorpay_order_id;
         if (rzpOrder) body.razorpay_order_id = rzpOrder;
         if (opts.razorpay_payment_id) body.razorpay_payment_id = opts.razorpay_payment_id;
         if (opts.razorpay_signature) body.razorpay_signature = opts.razorpay_signature;
 
-        const res = await fetch(MINO_API.baseUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            redirect: 'follow',
-            body: JSON.stringify(body)
-        });
-        const data = await res.json();
+        const data = await checkoutPost('confirmRazorpayPayment', body);
+        confirmData = data;
 
         if (data.ok && (data.paid || data.status === 'paid')) {
             showPaymentConfirmed(data);
             return data;
         }
         if (data.ok && !data.paid) {
-            if (msgEl) {
-                msgEl.textContent = `Payment not completed yet (${data.razorpay_state || 'pending'}). Tap Check status after paying, or use UPI.`;
-                msgEl.classList.remove('hidden');
-            }
-            document.getElementById('razorpay-check-btn')?.classList.remove('hidden');
-            const details = document.getElementById('pay-upi-details');
-            if (details) details.open = true;
+            showPaymentFailure(`Payment is still ${data.razorpay_state || 'pending'}. If money was debited, wait a moment and check again.`);
             return data;
         }
         throw new Error(data.error || 'confirm_failed');
     } catch (err) {
         console.error('[checkout] confirmRazorpayPayment failed', err);
-        if (errEl) {
-            errEl.textContent = 'Could not confirm payment yet. Tap Check status, or pay via UPI.';
-            errEl.classList.remove('hidden');
-        }
+        const code = String(confirmData?.error || err?.message || '');
+        const canRestart = ['hold_expired', 'invalid_order_status', 'order_not_pending']
+            .includes(code);
+        const message = canRestart
+            ? 'This stock reservation has expired. Return to your cart to start a new checkout.'
+            : 'We could not confirm the payment yet. If money was debited, use “I paid — check status” before retrying.';
+        showPaymentFailure(message, canRestart);
         msgEl?.classList.add('hidden');
-        document.getElementById('razorpay-check-btn')?.classList.remove('hidden');
         return { ok: false };
     } finally {
+        paymentConfirming = false;
         if (checkBtn) {
             checkBtn.disabled = false;
             checkBtn.textContent = 'Check payment status';
@@ -835,29 +1192,18 @@ async function confirmRazorpayPayment(opts = {}) {
 }
 
 function showPaymentConfirmed(data) {
+    if (lastPlacedOrder && !lastPlacedOrder.cart_cleared) {
+        clearCartAfterOrder(lastPlacedOrder.cart_snapshot);
+        clearAppliedCoupon();
+        const couponInput = document.getElementById('coupon-code');
+        if (couponInput) couponInput.value = '';
+        lastPlacedOrder.cart_cleared = true;
+    }
     if (lastPlacedOrder) lastPlacedOrder.status = 'paid';
 
     const msgEl = document.getElementById('razorpay-status-msg');
     const errEl = document.getElementById('razorpay-status-err');
-    const reportMsg = document.getElementById('pay-report-msg');
     errEl?.classList.add('hidden');
-
-    const thanks = data.already
-        ? 'Payment already confirmed — thank you!'
-        : 'Payment confirmed — order is paid. We’ll prepare your fish.';
-    if (msgEl && !document.getElementById('pay-razorpay-block')?.classList.contains('hidden')) {
-        msgEl.textContent = thanks;
-        msgEl.classList.remove('hidden');
-    }
-    if (reportMsg) {
-        reportMsg.textContent = thanks;
-        reportMsg.classList.remove('hidden');
-    }
-
-    document.getElementById('razorpay-pay-btn')?.classList.add('hidden');
-    document.getElementById('razorpay-check-btn')?.classList.add('hidden');
-    document.getElementById('report-paid-btn')?.classList.add('hidden');
-    document.getElementById('pay-upi-details')?.classList.add('hidden');
 
     if (data.stock && typeof AppState !== 'undefined') {
         AppState.stock = data.stock;
@@ -865,112 +1211,24 @@ function showPaymentConfirmed(data) {
         if (typeof applyStockToProducts === 'function') applyStockToProducts();
         if (typeof persistStockCache === 'function') persistStockCache();
     }
-}
-
-function copyPayUpi() {
-    const upi = document.getElementById('pay-upi-id')?.textContent?.trim();
-    if (!upi || upi === '—') return;
-    navigator.clipboard?.writeText(upi).then(() => {
-        const btn = document.querySelector('#pay-instructions button');
-        if (!btn) return;
-        const prev = btn.textContent;
-        btn.textContent = 'Copied';
-        setTimeout(() => { btn.textContent = prev; }, 1200);
-    }).catch(() => alert(`UPI ID: ${upi}`));
-}
-
-async function reportPayment() {
-    if (!lastPlacedOrder?.order_id) return;
-    const msgEl = document.getElementById('pay-report-msg');
-    const errEl = document.getElementById('pay-report-err');
-    const btn = document.getElementById('report-paid-btn');
-    msgEl?.classList.add('hidden');
-    errEl?.classList.add('hidden');
-
-    if (btn) {
-        btn.disabled = true;
-        btn.textContent = 'Reporting…';
-    }
-
-    try {
-        const res = await fetch(MINO_API.baseUrl, {
-            method: 'POST',
-            redirect: 'follow',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({
-                token: MINO_API.token,
-                origin: minoStoreOrigin(),
-                action: 'reportPayment',
-                order_id: lastPlacedOrder.order_id
-            })
-        });
-        const data = await res.json();
-        if (!data.ok) {
-            if (errEl) {
-                errEl.textContent = data.error === 'invalid_status'
-                    ? `Order cannot be reported (status: ${data.status}).`
-                    : (data.error || 'Could not report payment.');
-                errEl.classList.remove('hidden');
-            }
-            if (btn) {
-                btn.disabled = false;
-                btn.textContent = 'I have paid';
-            }
-            return;
-        }
-        lastPlacedOrder.status = data.status || 'payment_reported';
-        if (data.paid || data.status === 'paid') {
-            showPaymentConfirmed(data);
-            return;
-        }
-        if (msgEl) {
-            msgEl.textContent = data.already
-                ? 'Payment already reported. We’ll confirm and update you.'
-                : 'Thanks — payment reported. We’ll confirm and pack your order.';
-            msgEl.classList.remove('hidden');
-        }
-        if (btn) {
-            btn.textContent = 'Payment reported';
-            btn.classList.add('opacity-60', 'cursor-not-allowed');
-        }
-    } catch (err) {
-        console.error('[checkout] reportPayment failed', err);
-        if (errEl) {
-            errEl.textContent = 'Network error. Try again.';
-            errEl.classList.remove('hidden');
-        }
-        if (btn) {
-            btn.disabled = false;
-            btn.textContent = 'I have paid';
-        }
-    }
+    showCheckoutSuccess(data);
 }
 
 function resetCheckoutForm() {
     lastPlacedOrder = null;
-    document.getElementById('checkout-success')?.classList.add('hidden');
-    document.getElementById('checkout-form')?.classList.remove('hidden');
-    document.getElementById('cart-active-summary')?.classList.remove('hidden');
+    paymentWindowOpened = false;
+    paymentConfirming = false;
+    razorpayOpenInFlight = false;
     setCheckoutError('');
+    setCheckoutOrderError('');
+    goCheckoutStep(1);
+    renderCheckoutIdentity();
     updatePlaceOrderButton();
 }
 
-function shareOrderOnWhatsApp() {
-    if (!lastPlacedOrder?.order_id) return;
-    const upi = lastPlacedOrder.pay?.upi_id || '';
-    const lines = [
-        `*Order placed — Mino Pets*`,
-        `Order ID: ${lastPlacedOrder.order_id}`,
-        `Amount: ₹${lastPlacedOrder.total}/-`,
-        upi ? `UPI: ${upi}` : '',
-        `Status: ${lastPlacedOrder.status || 'pending_payment'}`,
-        '',
-        'Please confirm payment after I pay.'
-    ].filter(Boolean);
-    window.open(
-        `https://wa.me/${MY_WHATSAPP_NUMBER}?text=${encodeURIComponent(lines.join('\n'))}`,
-        '_blank'
-    );
+function finishCheckout() {
+    resetCheckoutForm();
+    closeCartPanel();
 }
 
 /** Thin GET lookup — prefills name/address when Customers sheet has this phone. */
